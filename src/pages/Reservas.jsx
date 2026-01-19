@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { storage } from '../services/storage';
 import { 
@@ -17,6 +18,28 @@ import { ptBR } from 'date-fns/locale';
 export default function Reservas() {
   const { user, isAdmin } = useAuth();
   const [bookings, setBookings] = useState(storage.getBookings());
+
+  // Realtime Supabase para reservas
+  useEffect(() => {
+    if (!isSupabaseEnabled()) return;
+    // Busca inicial
+    const fetchBookings = async () => {
+      const { data, error } = await supabase.from('bookings').select('*').order('date', { ascending: true });
+      if (!error && data) setBookings(data);
+    };
+    fetchBookings();
+
+    // Canal realtime
+    const channel = supabase
+      .channel('public:bookings')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, payload => {
+        fetchBookings();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);

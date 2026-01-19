@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { storage } from '../services/storage';
 import { 
@@ -19,6 +20,28 @@ import { ptBR } from 'date-fns/locale';
 export default function Financeiro() {
   const { user, isAdmin } = useAuth();
   const [bills, setBills] = useState(storage.getBills());
+
+  // Realtime Supabase para boletos
+  useEffect(() => {
+    if (!isSupabaseEnabled()) return;
+    // Busca inicial
+    const fetchBills = async () => {
+      const { data, error } = await supabase.from('bills').select('*').order('due_date', { ascending: true });
+      if (!error && data) setBills(data);
+    };
+    fetchBills();
+
+    // Canal realtime
+    const channel = supabase
+      .channel('public:bills')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, payload => {
+        fetchBills();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedBill, setSelectedBill] = useState(null);

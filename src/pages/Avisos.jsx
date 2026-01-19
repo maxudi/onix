@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { storage } from '../services/storage';
 import { 
@@ -18,6 +19,28 @@ import { ptBR } from 'date-fns/locale';
 export default function Avisos() {
   const { user, isAdmin } = useAuth();
   const [notices, setNotices] = useState(storage.getNotices());
+
+  // Realtime Supabase para avisos
+  useEffect(() => {
+    if (!isSupabaseEnabled()) return;
+    // Busca inicial
+    const fetchNotices = async () => {
+      const { data, error } = await supabase.from('notices').select('*').order('created_at', { ascending: false });
+      if (!error && data) setNotices(data);
+    };
+    fetchNotices();
+
+    // Canal realtime
+    const channel = supabase
+      .channel('public:notices')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, payload => {
+        fetchNotices();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');

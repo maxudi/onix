@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { storage } from '../services/storage';
 import { Users, Home, Plus, Edit, Trash2, Search, Building2 } from 'lucide-react';
 
@@ -6,6 +7,44 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('residents');
   const [users, setUsers] = useState(storage.getUsers());
   const [units, setUnits] = useState(storage.getUnits());
+
+  // Realtime Supabase para usuários
+  useEffect(() => {
+    if (!isSupabaseEnabled()) return;
+    const fetchUsers = async () => {
+      const { data, error } = await supabase.from('users').select('*');
+      if (!error && data) setUsers(data);
+    };
+    fetchUsers();
+    const channel = supabase
+      .channel('public:users')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, payload => {
+        fetchUsers();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  // Realtime Supabase para unidades
+  useEffect(() => {
+    if (!isSupabaseEnabled()) return;
+    const fetchUnits = async () => {
+      const { data, error } = await supabase.from('units').select('*');
+      if (!error && data) setUnits(data);
+    };
+    fetchUnits();
+    const channel = supabase
+      .channel('public:units')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'units' }, payload => {
+        fetchUnits();
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
