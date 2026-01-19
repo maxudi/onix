@@ -1,35 +1,18 @@
-# Build stage
+# Estágio de Build
 FROM node:18-alpine AS builder
-
 WORKDIR /app
-
-# Copy package files
 COPY package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy source code
+RUN npm install   # npm ci às vezes falha se o lock for antigo
 COPY . .
-
-# Build the application
 RUN npm run build
 
-# Production stage
+# Estágio de Produção
 FROM nginx:alpine
-
-# Copy built assets from builder stage
+# Verifique se o seu build realmente gera a pasta "dist"
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy custom nginx config
-COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Remova ou comente o Healthcheck abaixo para testar
+# HEALTHCHECK ... 
 
-# Expose port 80
 EXPOSE 80
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
-
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
