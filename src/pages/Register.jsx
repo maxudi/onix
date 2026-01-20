@@ -27,7 +27,7 @@ export default function Register() {
     e.preventDefault();
     setError('');
 
-    // Validações
+    // Validações Básicas
     if (formData.password !== formData.confirmPassword) {
       setError('As senhas não coincidem');
       return;
@@ -42,12 +42,14 @@ export default function Register() {
 
     try {
       const { confirmPassword, ...userData } = formData;
-      // Chamamos o registro. O AuthContext deve atualizar o estado 'user' automaticamente.
+      // O método register agora salva no Supabase (HTTP POST) e já loga o usuário
       await register(userData);
-      // Redirecionamos para o dashboard onde o 'loading' do AuthContext garantirá a segurança.
+      
+      // Navega para o Dashboard. O Dashboard agora tem o "guarda" de loading
+      // que impedirá erros de 'user is undefined' logo após o cadastro.
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message || 'Erro ao criar conta. Tente novamente.');
+      setError(err.message || 'Erro ao criar conta. Verifique os dados e tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -61,14 +63,14 @@ export default function Register() {
           <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4 shadow-lg">
             <Building2 className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Criar Conta</h1>
-          <p className="text-gray-600">Cadastre-se no sistema do condomínio</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Criar Conta no Onix</h1>
+          <p className="text-gray-600">Cadastre-se para acessar o sistema do condomínio</p>
         </div>
 
         {/* Card de Registro */}
-        <div className="card">
+        <div className="card shadow-xl border-t-4 border-primary-600">
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-800">{error}</p>
             </div>
@@ -201,9 +203,14 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed mt-4 h-11 flex items-center justify-center"
             >
-              {loading ? 'Criando conta...' : 'Criar Conta'}
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Criando conta...
+                </>
+              ) : 'Criar Conta'}
             </button>
           </form>
 

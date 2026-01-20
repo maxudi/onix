@@ -11,7 +11,7 @@ export default function Login() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
 
-  // Proteção extra: se o usuário já estiver logado, redireciona para o dashboard
+  // Proteção: se o usuário já estiver logado, redireciona automaticamente
   useEffect(() => {
     if (user) {
       navigate('/dashboard');
@@ -24,11 +24,13 @@ export default function Login() {
     setLoading(true);
 
     try {
+      // Realiza o login via Supabase Auth (HTTP POST)
       const sessionUser = await login(email, password);
       if (sessionUser) {
         navigate('/dashboard');
       }
     } catch (err) {
+      // Captura erros de credenciais ou rede
       setError(err.message || 'Falha ao realizar login. Verifique suas credenciais.');
     } finally {
       setLoading(false);
@@ -48,11 +50,11 @@ export default function Login() {
         </div>
 
         {/* Card de Login */}
-        <div className="card">
+        <div className="card shadow-xl border-t-4 border-primary-600">
           <h2 className="text-2xl font-bold text-gray-900 mb-6">Entrar</h2>
 
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
               <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
               <p className="text-sm text-red-800">{error}</p>
             </div>
@@ -106,9 +108,14 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed h-11 flex items-center justify-center"
             >
-              {loading ? 'Entrando...' : 'Entrar'}
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  Entrando...
+                </>
+              ) : 'Entrar'}
             </button>
           </form>
 
@@ -121,10 +128,10 @@ export default function Login() {
 
           {/* Credenciais de teste */}
           <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-xs font-medium text-gray-700 mb-2">Contas de teste:</p>
+            <p className="text-xs font-medium text-gray-700 mb-2 uppercase tracking-wider">Acesso Rápido:</p>
             <div className="space-y-1 text-xs text-gray-600">
-              <p>👤 Admin: admin@onix.com / admin123</p>
-              <p>👤 Morador: joao@email.com / 123456</p>
+              <p><span className="font-semibold">Admin:</span> admin@onix.com / admin123</p>
+              <p><span className="font-semibold">Morador:</span> joao@email.com / 123456</p>
             </div>
           </div>
         </div>

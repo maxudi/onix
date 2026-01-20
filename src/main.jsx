@@ -13,22 +13,23 @@ import Avisos from './pages/Avisos';
 import Perfil from './pages/Perfil';
 import Admin from './pages/Admin';
 import TestaSupabase from './pages/TestaSupabase';
-import { initializeMockData } from './services/mockData';
+// Removido initializeMockData para focar apenas no banco real
 import './index.css';
-
-// Inicializar dados mockados
-initializeMockData();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
+      {/* O AuthProvider envolve tudo para que todos os componentes acessem o 'user' */}
       <AuthProvider>
         <Routes>
-          {/* Public routes */}
+          {/* Rotas Públicas */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
-          {/* Protected routes */}
+          {/* Rota de teste Supabase (livre) para diagnóstico rápido */}
+          <Route path="/testa-supabase" element={<TestaSupabase />} />
+
+          {/* Rotas Protegidas - Todas usam o componente ProtectedRoute */}
           <Route
             path="/dashboard"
             element={
@@ -90,13 +91,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             }
           />
 
-          {/* Rota de teste Supabase (livre) */}
-          <Route path="/testa-supabase" element={<TestaSupabase />} />
-
-          {/* Redirect root to dashboard */}
+          {/* Redirecionamentos de Segurança */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-          {/* 404 - Redirect to dashboard */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </AuthProvider>

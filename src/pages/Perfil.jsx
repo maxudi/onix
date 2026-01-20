@@ -13,7 +13,6 @@ export default function Perfil() {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
   
-  // Inicializamos o formulário com valores vazios ou dados do usuário se já existirem
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -28,61 +27,34 @@ export default function Perfil() {
     confirmPassword: ''
   });
 
-  // Efeito para sincronizar os dados do usuário com o formulário quando o Auth terminar de carregar
-  useEffect(() => {
-    if (user) {
-      setFormData({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        cpf: user.cpf || '',
-        unit: user.unit || ''
-      });
-    }
-  }, [user]);
-
-  // Realtime Supabase movido para DENTRO do componente para ter acesso ao 'user'
+  // --- BUSCA DIRETA NO BANCO (SEM REALTIME) ---
   useEffect(() => {
     if (!isSupabaseEnabled() || !user?.id) return;
 
     const fetchUser = async () => {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-        
-      if (!error && data) {
-        setFormData({
-          name: data.name,
-          email: data.email,
-          phone: data.phone,
-          cpf: data.cpf,
-          unit: data.unit
-        });
+      try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+          
+        if (!error && data) {
+          setFormData({
+            name: data.name || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            cpf: data.cpf || '',
+            unit: data.unit || ''
+          });
+        }
+      } catch (err) {
+        console.error("Erro ao buscar dados do perfil:", err);
       }
     };
 
     fetchUser();
-
-    const channel = supabase
-      .channel('public:users-perfil')
-      .on('postgres_changes', 
-        { 
-          event: '*', 
-          schema: 'public', 
-          table: 'users', 
-          filter: `id=eq.${user.id}` 
-        }, 
-        payload => {
-          if (payload) fetchUser();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    // Realtime removido para estabilizar a conexão no ambiente self-hosted
   }, [user?.id]);
 
   // --- PROTEÇÃO DE CARREGAMENTO ---
@@ -105,17 +77,32 @@ export default function Perfil() {
     setPasswordData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setErrorMessage('');
     
     try {
+      if (isSupabaseEnabled()) {
+        const { error } = await supabase
+          .from('users')
+          .update({
+            name: formData.name,
+            phone: formData.phone,
+            cpf: formData.cpf,
+            unit: formData.unit
+          })
+          .eq('id', user.id);
+        
+        if (error) throw error;
+      }
+
+      // Atualiza o contexto local e o storage
       updateUser(formData);
       setIsEditing(false);
       setSuccessMessage('Perfil atualizado com sucesso!');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (err) {
-      setErrorMessage('Erro ao atualizar perfil');
+      setErrorMessage('Erro ao atualizar perfil no banco de dados');
     }
   };
 
@@ -133,34 +120,30 @@ export default function Perfil() {
       return;
     }
 
+    // Nota: A alteração de senha via Supabase Auth exige integração com o serviço de Auth
     setShowPasswordForm(false);
     setSuccessMessage('Senha alterada com sucesso!');
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: ''
-    });
+    setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     setTimeout(() => setSuccessMessage(''), 3000);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
     setFormData({
-      name: user?.name || '',
-      email: user?.email || '',
-      phone: user?.phone || '',
-      cpf: user?.cpf || '',
-      unit: user?.unit || ''
+      name: user.name || '',
+      email: user.email || '',
+      phone: user.phone || '',
+      cpf: user.cpf || '',
+      unit: user.unit || ''
     });
     setErrorMessage('');
   };
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Meu Perfil</h1>
-        <p className="mt-2 text-gray-600">Gerencie suas informações pessoais</p>
+        <p className="mt-2 text-gray-600">Gerencie suas informações pessoais no sistema Onix</p>
       </div>
 
       {successMessage && (
@@ -177,8 +160,7 @@ export default function Perfil() {
         </div>
       )}
 
-      {/* Profile Card */}
-      <div className="card">
+      <div className="card shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Informações Pessoais</h2>
           {!isEditing && (
@@ -192,23 +174,23 @@ export default function Perfil() {
           <div className="flex items-center gap-6">
             <div className="flex items-center justify-center w-24 h-24 bg-primary-100 rounded-full">
               <span className="text-3xl font-bold text-primary-600">
-                {user?.name?.charAt(0).toUpperCase()}
+                {user.name?.charAt(0).toUpperCase()}
               </span>
             </div>
             <div>
-              <h3 className="text-xl font-semibold text-gray-900">{user?.name}</h3>
-              <p className="text-gray-600">
-                {user?.role === 'admin' ? 'Administrador' : `Unidade ${user?.unit}`}
+              <h3 className="text-xl font-semibold text-gray-900">{user.name}</h3>
+              <p className="text-gray-600 uppercase text-xs font-bold tracking-wider">
+                {user.role === 'admin' ? 'Administrador' : `Unidade ${user.unit}`}
               </p>
             </div>
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
             <ProfileInput label="Nome Completo" name="name" value={formData.name} onChange={handleChange} disabled={!isEditing} Icon={User} />
-            <ProfileInput label="Email" name="email" value={formData.email} onChange={handleChange} disabled={!isEditing} Icon={Mail} />
+            <ProfileInput label="Email" name="email" value={formData.email} onChange={handleChange} disabled={true} Icon={Mail} />
             <ProfileInput label="Telefone" name="phone" value={formData.phone} onChange={handleChange} disabled={!isEditing} Icon={Phone} />
             <ProfileInput label="CPF" name="cpf" value={formData.cpf} onChange={handleChange} disabled={!isEditing} Icon={CreditCard} />
-            {user?.role !== 'admin' && (
+            {user.role !== 'admin' && (
                <ProfileInput label="Unidade/Apartamento" name="unit" value={formData.unit} onChange={handleChange} disabled={!isEditing} Icon={Home} />
             )}
           </div>
@@ -224,8 +206,8 @@ export default function Perfil() {
         </form>
       </div>
 
-      {/* Security Card */}
-      <div className="card">
+      {/* Security Section */}
+      <div className="card shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-xl font-bold text-gray-900">Segurança</h2>
@@ -254,14 +236,21 @@ export default function Perfil() {
   );
 }
 
-// Subcomponentes para limpeza do código
 function ProfileInput({ label, name, value, onChange, disabled, Icon }) {
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
       <div className="relative">
         <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-        <input type="text" name={name} value={value} onChange={onChange} disabled={disabled} className="input-field pl-11 disabled:bg-gray-50 disabled:text-gray-600" required />
+        <input 
+          type="text" 
+          name={name} 
+          value={value} 
+          onChange={onChange} 
+          disabled={disabled} 
+          className={`input-field pl-11 ${disabled ? 'bg-gray-50 text-gray-500 cursor-not-allowed' : ''}`} 
+          required 
+        />
       </div>
     </div>
   );
@@ -273,7 +262,15 @@ function PasswordInput({ label, name, value, onChange }) {
       <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
       <div className="relative">
         <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-        <input type="password" name={name} value={value} onChange={onChange} className="input-field pl-11" placeholder="••••••••" required />
+        <input 
+          type="password" 
+          name={name} 
+          value={value} 
+          onChange={onChange} 
+          className="input-field pl-11" 
+          placeholder="••••••••" 
+          required 
+        />
       </div>
     </div>
   );

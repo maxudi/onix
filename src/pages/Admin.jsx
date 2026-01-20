@@ -1,97 +1,76 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { storage } from '../services/storage';
-import { useAuth } from '../contexts/AuthContext'; // ADICIONADO
+import { useAuth } from '../contexts/AuthContext';
 import { Users, Home, Plus, Edit, Trash2, Search, Building2 } from 'lucide-react';
 
 export default function Admin() {
-  // ADICIONADO: Extraímos user e loading para garantir que o componente saiba quem é o usuário
   const { user, loading } = useAuth(); 
   
-  const [activeTab, setActiveTab] = useState('residents');
+  // Inicializamos com dados do storage ou array vazio
   const [users, setUsers] = useState(storage.getUsers() || []);
   const [units, setUnits] = useState(storage.getUnits() || []);
-
-  // Realtime Supabase para usuários
-  useEffect(() => {
-    if (!isSupabaseEnabled()) return;
-    const fetchUsers = async () => {
-      const { data, error } = await supabase.from('users').select('*');
-      if (!error && data) setUsers(data);
-    };
-    fetchUsers();
-    const channel = supabase
-      .channel('public:users')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, payload => {
-        if (payload) fetchUsers();
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // Realtime Supabase para unidades
-  useEffect(() => {
-    if (!isSupabaseEnabled()) return;
-    const fetchUnits = async () => {
-      const { data, error } = await supabase.from('units').select('*');
-      if (!error && data) setUnits(data);
-    };
-    fetchUnits();
-    const channel = supabase
-      .channel('public:units')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'units' }, payload => {
-        if (payload) fetchUnits();
-      })
-      .subscribe();
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
+  const [activeTab, setActiveTab] = useState('residents');
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   const [editingItem, setEditingItem] = useState(null);
 
+  // --- BUSCA ESTÁTICA VIA HTTP (SEM REALTIME/WEBSOCKET) ---
+  useEffect(() => {
+    if (!isSupabaseEnabled()) return;
+
+    const fetchData = async () => {
+      try {
+        // Busca Usuários
+        const { data: userData, error: userError } = await supabase
+          .from('users')
+          .select('*');
+        if (!userError && userData) setUsers(userData);
+
+        // Busca Unidades
+        const { data: unitData, error: unitError } = await supabase
+          .from('units')
+          .select('*');
+        if (!unitError && unitData) setUnits(unitData);
+      } catch (err) {
+        console.error("Erro ao buscar dados do Admin:", err);
+      }
+    };
+
+    fetchData();
+    // Removemos o código do .channel() e .subscribe() para eliminar o erro de WebSocket
+  }, []);
+
   const [residentForm, setResidentForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    phone: '',
-    cpf: '',
-    unit: ''
+    name: '', email: '', password: '', phone: '', cpf: '', unit: ''
   });
 
   const [unitForm, setUnitForm] = useState({
-    number: '',
-    block: '',
-    floor: '',
-    ownerId: '',
-    ownerName: ''
+    number: '', block: '', floor: '', ownerId: '', ownerName: ''
   });
 
-  // PROTEÇÃO DE CARREGAMENTO: Se não houver usuário ou estiver carregando, paramos aqui.
+  // --- GUARDA DE SEGURANÇA ---
   if (loading || !user) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
-        <p className="ml-3 text-gray-600">Verificando permissões de administrador...</p>
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+        <p className="text-gray-500 font-medium">Verificando permissões de administrador...</p>
       </div>
     );
   }
 
-  const residents = users.filter(u => u.role === 'resident');
+  // Filtros seguros (usando optional chaining)
+  const residents = (users || []).filter(u => u.role === 'resident');
 
   const filteredResidents = residents.filter(resident =>
     resident.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     resident.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    resident.unit?.includes(searchTerm)
+    resident.unit?.toString().includes(searchTerm)
   );
 
-  const filteredUnits = units.filter(unit =>
-    unit.number?.includes(searchTerm) ||
+  const filteredUnits = (units || []).filter(unit =>
+    unit.number?.toString().includes(searchTerm) ||
     unit.block?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     unit.ownerName?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -99,47 +78,11 @@ export default function Admin() {
   const handleOpenModal = (type, item = null) => {
     setModalType(type);
     setEditingItem(item);
-    
     if (type === 'resident') {
-      if (item) {
-        setResidentForm({
-          name: item.name,
-          email: item.email,
-          password: '',
-          phone: item.phone,
-          cpf: item.cpf,
-          unit: item.unit
-        });
-      } else {
-        setResidentForm({
-          name: '',
-          email: '',
-          password: '',
-          phone: '',
-          cpf: '',
-          unit: ''
-        });
-      }
-    } else if (type === 'unit') {
-      if (item) {
-        setUnitForm({
-          number: item.number,
-          block: item.block,
-          floor: item.floor,
-          ownerId: item.ownerId || '',
-          ownerName: item.ownerName || ''
-        });
-      } else {
-        setUnitForm({
-          number: '',
-          block: '',
-          floor: '',
-          ownerId: '',
-          ownerName: ''
-        });
-      }
+      setResidentForm(item ? { ...item, password: '' } : { name: '', email: '', password: '', phone: '', cpf: '', unit: '' });
+    } else {
+      setUnitForm(item ? { ...item } : { number: '', block: '', floor: '', ownerId: '', ownerName: '' });
     }
-    
     setShowModal(true);
   };
 
@@ -148,250 +91,110 @@ export default function Admin() {
     setEditingItem(null);
   };
 
-  const handleResidentSubmit = (e) => {
+  const handleResidentSubmit = async (e) => {
     e.preventDefault();
+    const updatedData = editingItem 
+      ? users.map(u => u.id === editingItem.id ? { ...u, ...residentForm } : u)
+      : [...users, { id: Date.now().toString(), ...residentForm, role: 'resident', createdAt: new Date().toISOString() }];
     
-    if (editingItem) {
-      const updatedUsers = users.map(u =>
-        u.id === editingItem.id
-          ? { ...u, ...residentForm, password: residentForm.password || u.password }
-          : u
-      );
-      setUsers(updatedUsers);
-      storage.setUsers(updatedUsers);
-    } else {
-      const newResident = {
-        id: Date.now().toString(),
-        ...residentForm,
-        role: 'resident',
-        createdAt: new Date().toISOString()
-      };
-      const updatedUsers = [...users, newResident];
-      setUsers(updatedUsers);
-      storage.setUsers(updatedUsers);
-    }
-
+    setUsers(updatedData);
+    storage.setUsers(updatedData);
     handleCloseModal();
   };
 
   const handleUnitSubmit = (e) => {
     e.preventDefault();
+    const updatedData = editingItem 
+      ? units.map(u => u.id === editingItem.id ? { ...u, ...unitForm } : u)
+      : [...units, { id: Date.now().toString(), ...unitForm }];
     
-    if (editingItem) {
-      const updatedUnits = units.map(u =>
-        u.id === editingItem.id ? { ...u, ...unitForm } : u
-      );
-      setUnits(updatedUnits);
-      storage.setUnits(updatedUnits);
-    } else {
-      const newUnit = {
-        id: Date.now().toString(),
-        ...unitForm
-      };
-      const updatedUnits = [...units, newUnit];
-      setUnits(updatedUnits);
-      storage.setUnits(updatedUnits);
-    }
-
+    setUnits(updatedData);
+    storage.setUnits(updatedData);
     handleCloseModal();
-  };
-
-  const handleDeleteResident = (id) => {
-    if (confirm('Tem certeza que deseja excluir este morador?')) {
-      const updatedUsers = users.filter(u => u.id !== id);
-      setUsers(updatedUsers);
-      storage.setUsers(updatedUsers);
-    }
-  };
-
-  const handleDeleteUnit = (id) => {
-    if (confirm('Tem certeza que deseja excluir esta unidade?')) {
-      const updatedUnits = units.filter(u => u.id !== id);
-      setUnits(updatedUnits);
-      storage.setUnits(updatedUnits);
-    }
   };
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold text-gray-900">Administração</h1>
-        <p className="mt-2 text-gray-600">Gerencie moradores e unidades do condomínio</p>
+        <button onClick={() => handleOpenModal(activeTab === 'residents' ? 'resident' : 'unit')} className="btn-primary flex items-center gap-2">
+          <Plus className="w-5 h-5" /> Novo {activeTab === 'residents' ? 'Morador' : 'Unidade'}
+        </button>
       </div>
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-        <div className="card bg-gradient-to-br from-primary-50 to-primary-100 border-primary-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-primary-800">Total de Moradores</p>
-              <p className="mt-2 text-3xl font-bold text-primary-900">{residents.length}</p>
-            </div>
-            <Users className="w-12 h-12 text-primary-600" />
-          </div>
+        <div className="card bg-blue-50 border-blue-200 flex items-center justify-between">
+          <div><p className="text-sm text-blue-800">Moradores</p><p className="text-2xl font-bold">{residents.length}</p></div>
+          <Users className="w-10 h-10 text-blue-600 opacity-20" />
         </div>
-
-        <div className="card bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-blue-800">Total de Unidades</p>
-              <p className="mt-2 text-3xl font-bold text-blue-900">{units.length}</p>
-              <p className="text-xs text-blue-700 mt-1">
-                {units.filter(u => u.ownerId).length} ocupadas
-              </p>
-            </div>
-            <Home className="w-12 h-12 text-blue-600" />
-          </div>
+        <div className="card bg-green-50 border-green-200 flex items-center justify-between">
+          <div><p className="text-sm text-green-800">Unidades</p><p className="text-2xl font-bold">{units.length}</p></div>
+          <Building2 className="w-10 h-10 text-green-600 opacity-20" />
         </div>
       </div>
 
       <div className="card p-0">
-        <div className="border-b border-gray-200">
-          <div className="flex">
-            <button
-              onClick={() => setActiveTab('residents')}
-              className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
-                activeTab === 'residents'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Users className="w-5 h-5 inline-block mr-2" />
-              Moradores
-            </button>
-            <button
-              onClick={() => setActiveTab('units')}
-              className={`flex-1 px-6 py-4 text-sm font-medium transition-colors ${
-                activeTab === 'units'
-                  ? 'text-primary-600 border-b-2 border-primary-600'
-                  : 'text-gray-600 hover:text-gray-900'
-              }`}
-            >
-              <Home className="w-5 h-5 inline-block mr-2" />
-              Unidades
-            </button>
-          </div>
+        <div className="flex border-b">
+          <button onClick={() => setActiveTab('residents')} className={`flex-1 py-4 text-sm font-bold ${activeTab === 'residents' ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-500'}`}>MORADORES</button>
+          <button onClick={() => setActiveTab('units')} className={`flex-1 py-4 text-sm font-bold ${activeTab === 'units' ? 'text-primary-600 border-b-2 border-primary-600' : 'text-gray-500'}`}>UNIDADES</button>
         </div>
-
+        
         <div className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder={activeTab === 'residents' ? 'Buscar moradores...' : 'Buscar unidades...'}
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="input-field pl-11"
-                />
-              </div>
-            </div>
-            <button
-              onClick={() => handleOpenModal(activeTab === 'residents' ? 'resident' : 'unit')}
-              className="btn-primary flex items-center gap-2"
-            >
-              <Plus className="w-5 h-5" />
-              {activeTab === 'residents' ? 'Novo Morador' : 'Nova Unidade'}
-            </button>
+          <div className="relative mb-6">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+            <input type="text" placeholder="Pesquisar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="input-field pl-11" />
           </div>
 
-          {activeTab === 'residents' && (
-            <div className="space-y-4">
-              {filteredResidents.length === 0 ? (
-                <div className="text-center py-12">
-                  <Users className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-gray-500">Nenhum morador encontrado</p>
-                </div>
-              ) : (
-                filteredResidents.map((resident) => (
-                  <div key={resident.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center justify-center w-12 h-12 bg-primary-100 rounded-full">
-                        <span className="text-lg font-semibold text-primary-600">
-                          {resident.name?.charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                      <div>
-                        <h3 className="font-semibold text-gray-900">{resident.name}</h3>
-                        <p className="text-sm text-gray-600">{resident.email}</p>
-                        <p className="text-sm text-gray-500">
-                          Unidade {resident.unit} • {resident.phone}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleOpenModal('resident', resident)}
-                        className="p-2 text-primary-600 hover:bg-primary-50 rounded-lg"
-                      >
-                        <Edit className="w-5 h-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteResident(resident.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                      >
-                        <Trash2 className="w-5 h-5" />
-                      </button>
-                    </div>
+          {activeTab === 'residents' ? (
+            <div className="space-y-3">
+              {filteredResidents.map(r => (
+                <div key={r.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  <div><p className="font-bold">{r.name}</p><p className="text-xs text-gray-500">{r.email} • Unidade {r.unit}</p></div>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleOpenModal('resident', r)} className="p-2 text-blue-600"><Edit className="w-4 h-4" /></button>
+                    <button onClick={() => { if(confirm('Excluir?')) setUsers(users.filter(u => u.id !== r.id)) }} className="p-2 text-red-600"><Trash2 className="w-4 h-4" /></button>
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
-          )}
-
-          {activeTab === 'units' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredUnits.length === 0 ? (
-                <div className="col-span-full text-center py-12">
-                  <Home className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                  <p className="text-gray-500">Nenhuma unidade encontrada</p>
-                </div>
-              ) : (
-                filteredUnits.map((unit) => (
-                  <div key={unit.id} className="card">
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className={`p-3 rounded-lg ${unit.ownerId ? 'bg-green-100' : 'bg-gray-100'}`}>
-                          <Building2 className={`w-6 h-6 ${unit.ownerId ? 'text-green-600' : 'text-gray-400'}`} />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">Unidade {unit.number}</h3>
-                          <p className="text-sm text-gray-600">Bloco {unit.block} • {unit.floor}º andar</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleOpenModal('unit', unit)}
-                        className="flex-1 px-3 py-2 text-sm font-medium text-primary-600 border border-primary-200 rounded-lg"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUnit(unit.id)}
-                        className="px-3 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-lg"
-                      >
-                        Excluir
-                      </button>
-                    </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filteredUnits.map(u => (
+                <div key={u.id} className="p-4 border rounded-lg">
+                  <h3 className="font-bold">Apt {u.number} - Bloco {u.block}</h3>
+                  <p className="text-sm text-gray-600">Proprietário: {u.ownerName || 'Vazio'}</p>
+                  <div className="mt-4 flex gap-2">
+                    <button onClick={() => handleOpenModal('unit', u)} className="flex-1 text-xs btn-secondary">Editar</button>
                   </div>
-                ))
-              )}
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-white rounded-xl shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-start justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">
-                {editingItem ? 'Editar' : 'Novo'} {modalType === 'resident' ? 'Morador' : 'Unidade'}
-              </h3>
-              <button onClick={handleCloseModal} className="text-gray-400">✕</button>
-            </div>
-            {/* ... restante do formulário (mantido igual) ... */}
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-xl p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">{editingItem ? 'Editar' : 'Novo'} {modalType}</h2>
+            <form onSubmit={modalType === 'resident' ? handleResidentSubmit : handleUnitSubmit} className="space-y-4">
+              {modalType === 'resident' ? (
+                <>
+                  <input className="input-field" placeholder="Nome" value={residentForm.name} onChange={e => setResidentForm({...residentForm, name: e.target.value})} required />
+                  <input className="input-field" placeholder="Email" value={residentForm.email} onChange={e => setResidentForm({...residentForm, email: e.target.value})} required />
+                  <input className="input-field" placeholder="Unidade" value={residentForm.unit} onChange={e => setResidentForm({...residentForm, unit: e.target.value})} required />
+                </>
+              ) : (
+                <>
+                  <input className="input-field" placeholder="Número" value={unitForm.number} onChange={e => setUnitForm({...unitForm, number: e.target.value})} required />
+                  <input className="input-field" placeholder="Bloco" value={unitForm.block} onChange={e => setUnitForm({...unitForm, block: e.target.value})} required />
+                </>
+              )}
+              <div className="flex gap-2">
+                <button type="button" onClick={handleCloseModal} className="flex-1 btn-secondary">Cancelar</button>
+                <button type="submit" className="flex-1 btn-primary">Salvar</button>
+              </div>
+            </form>
           </div>
         </div>
       )}
