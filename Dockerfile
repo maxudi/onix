@@ -3,6 +3,16 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
+# --- ADICIONE ESTAS LINHAS AQUI ---
+# O Easypanel passará os valores da aba "Ambiente" para estes ARGs
+ARG VITE_SUPABASE_URL
+ARG VITE_SUPABASE_ANON_KEY
+
+# Torna as variáveis disponíveis para o processo 'npm run build'
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL
+ENV VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY
+# ----------------------------------
+
 # Copy package files
 COPY package*.json ./
 
@@ -12,7 +22,7 @@ RUN npm ci
 # Copy source code
 COPY . .
 
-# Build the application
+# Agora o build terá acesso às variáveis reais
 RUN npm run build
 
 # Production stage
@@ -26,10 +36,6 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Expose port 80
 EXPOSE 80
-
-# Health check
-#HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-#  CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]
