@@ -54,7 +54,7 @@ export default function Reservas() {
   });
 
   // Filtrar reservas
-  const userBookings = isAdmin ? bookings : bookings.filter(b => b.userId === user.id);
+  const userBookings = isAdmin ? bookings : bookings.filter(b => user && b.userId === user.id);
   
   const filteredBookings = userBookings.filter(booking => 
     booking.event.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -78,9 +78,9 @@ export default function Reservas() {
     
     const newBooking = {
       id: Date.now().toString(),
-      userId: user.id,
-      userName: user.name,
-      unit: user.unit,
+      userId: user && user.id ? user.id : 'anon',
+      userName: user && user.name ? user.name : 'Desconhecido',
+      unit: user && user.unit ? user.unit : '',
       ...formData,
       status: isAdmin ? 'approved' : 'pending',
       createdAt: new Date().toISOString()

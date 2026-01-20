@@ -47,7 +47,7 @@ export default function Financeiro() {
   const [selectedBill, setSelectedBill] = useState(null);
 
   // Filtrar boletos
-  const userBills = isAdmin ? bills : bills.filter(b => b.userId === user.id);
+  const userBills = isAdmin ? bills : bills.filter(b => user && b.userId === user.id);
   
   const filteredBills = userBills.filter(bill => {
     const matchesSearch = bill.description.toLowerCase().includes(searchTerm.toLowerCase());

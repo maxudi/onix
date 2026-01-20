@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
   // Realtime Supabase para usuário logado
   useEffect(() => {
-    if (!isSupabaseEnabled() || !user?.id) return;
+    if (!isSupabaseEnabled() || !user || !user.id) return;
     const fetchUser = async () => {
       const { data, error } = await supabase.from('users').select('*').eq('id', user.id).single();
       if (!error && data) {
@@ -18,14 +18,14 @@ import { supabase, isSupabaseEnabled } from '../lib/supabase';
     fetchUser();
     const channel = supabase
       .channel('public:users-perfil')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users', filter: `id=eq.${user.id}` }, payload => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users', filter: user && user.id ? `id=eq.${user.id}` : '' }, payload => {
         if (payload) fetchUser();
       })
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user?.id]);
+  }, [user && user.id]);
 import { useAuth } from '../contexts/AuthContext';
 import { User, Mail, Phone, Home, CreditCard, Lock, Save, AlertCircle, CheckCircle } from 'lucide-react';
 
