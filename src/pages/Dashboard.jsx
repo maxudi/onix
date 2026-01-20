@@ -35,9 +35,9 @@ export default function Dashboard() {
     );
   }
 
-  // A partir daqui, é seguro usar 'user', pois o 'if' acima garantiu que ele existe.
-  const userBills = isAdmin ? bills : bills.filter(b => b.userId === user.id);
-  const userBookings = isAdmin ? bookings : bookings.filter(b => b.userId === user.id);
+  // Todas as variáveis que dependem de user só são declaradas após garantir que user existe
+  const userBills = isAdmin ? bills : bills.filter(b => b.userId === user?.id);
+  const userBookings = isAdmin ? bookings : bookings.filter(b => b.userId === user?.id);
 
   // Estatísticas
   const pendingBills = userBills.filter(b => b.status === 'pending');
