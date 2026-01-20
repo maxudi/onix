@@ -36,8 +36,8 @@ export default function Dashboard() {
   }
 
   // Todas as variáveis que dependem de user só são declaradas após garantir que user existe
-  const userBills = isAdmin ? bills : bills.filter(b => b.userId === user?.id);
-  const userBookings = isAdmin ? bookings : bookings.filter(b => b.userId === user?.id);
+  const userBills = isAdmin ? bills : bills.filter(b => user && b.userId === user.id);
+  const userBookings = isAdmin ? bookings : bookings.filter(b => user && b.userId === user.id);
 
   // Estatísticas
   const pendingBills = userBills.filter(b => b.status === 'pending');
