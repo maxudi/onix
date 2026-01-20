@@ -12,6 +12,7 @@ import Reservas from './pages/Reservas';
 import Avisos from './pages/Avisos';
 import Perfil from './pages/Perfil';
 import Admin from './pages/Admin';
+import TestaSupabase from './pages/TestaSupabase';
 import { initializeMockData } from './services/mockData';
 import './index.css';
 
@@ -88,6 +89,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
               </ProtectedRoute>
             }
           />
+
+          {/* Rota de teste Supabase (livre) */}
+          <Route path="/testa-supabase" element={<TestaSupabase />} />
 
           {/* Redirect root to dashboard */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />

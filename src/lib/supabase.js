@@ -17,3 +17,16 @@ export const supabase = supabaseUrl && supabaseAnonKey
 
 // Verificar se Supabase está disponível
 export const isSupabaseEnabled = () => supabase !== null;
+
+// Função utilitária para testar conexão com Supabase
+export async function testSupabaseConnection() {
+  if (!supabase) return { ok: false, error: 'Supabase não configurado' };
+  try {
+    // Tenta buscar 1 usuário (ou qualquer tabela existente)
+    const { error } = await supabase.from('users').select('id').limit(1);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
