@@ -19,7 +19,7 @@ import { supabase, isSupabaseEnabled } from '../lib/supabase';
     const channel = supabase
       .channel('public:users-perfil')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users', filter: `id=eq.${user.id}` }, payload => {
-        fetchUser();
+        if (payload) fetchUser();
       })
       .subscribe();
     return () => {

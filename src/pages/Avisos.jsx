@@ -34,7 +34,7 @@ export default function Avisos() {
     const channel = supabase
       .channel('public:notices')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, payload => {
-        fetchNotices();
+        if (payload) fetchNotices();
       })
       .subscribe();
     return () => {

@@ -19,7 +19,7 @@ export default function Admin() {
     const channel = supabase
       .channel('public:users')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, payload => {
-        fetchUsers();
+        if (payload) fetchUsers();
       })
       .subscribe();
     return () => {
@@ -38,7 +38,7 @@ export default function Admin() {
     const channel = supabase
       .channel('public:units')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'units' }, payload => {
-        fetchUnits();
+        if (payload) fetchUnits();
       })
       .subscribe();
     return () => {

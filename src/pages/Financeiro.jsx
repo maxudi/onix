@@ -35,7 +35,7 @@ export default function Financeiro() {
     const channel = supabase
       .channel('public:bills')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bills' }, payload => {
-        fetchBills();
+        if (payload) fetchBills();
       })
       .subscribe();
     return () => {

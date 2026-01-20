@@ -33,7 +33,7 @@ export default function Reservas() {
     const channel = supabase
       .channel('public:bookings')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, payload => {
-        fetchBookings();
+        if (payload) fetchBookings();
       })
       .subscribe();
     return () => {

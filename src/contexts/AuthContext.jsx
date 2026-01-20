@@ -74,13 +74,18 @@ export const AuthProvider = ({ children }) => {
   const updateUser = (updatedData) => {
     // PROTEÇÃO: Impede o erro de tela branca se 'user' for null
     if (!user) {
+    
+      storage.setCurrentUser(updatedUser);
+  const updateUser = (updatedData) => {
+    // PROTEÇÃO: Impede o erro de tela branca se 'user' for null
+    if (!user) {
       console.warn("Tentativa de atualizar usuário nulo abortada.");
       return;
     }
-
+    loading,
     const updatedUser = { ...user, ...updatedData };
     setUser(updatedUser);
-    
+        
     // Sincroniza com o localStorage/storage local se existir
     if (storage) {
       storage.setCurrentUser(updatedUser);
@@ -94,10 +99,6 @@ export const AuthProvider = ({ children }) => {
       }
     }
   };
-
-  const value = {
-    user,
-    loading,
     login,
     register,
     logout,
