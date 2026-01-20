@@ -67,7 +67,7 @@ export default function Avisos() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+    console.log('[Avisos] handleSubmit user:', user);
     const newNotice = {
       id: Date.now().toString(),
       ...formData,
@@ -76,7 +76,9 @@ export default function Avisos() {
       isPinned: false,
       createdAt: new Date().toISOString()
     };
-
+    if (!user) {
+      console.warn('[Avisos] Tentativa de criar aviso sem usuário logado!');
+    }
     const updatedNotices = [newNotice, ...notices];
     setNotices(updatedNotices);
     storage.setNotices(updatedNotices);

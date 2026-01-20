@@ -47,7 +47,11 @@ export default function Financeiro() {
   const [selectedBill, setSelectedBill] = useState(null);
 
   // Filtrar boletos
+  console.log('[Financeiro] user:', user);
   const userBills = isAdmin ? bills : bills.filter(b => user && b.userId === user.id);
+  if (!user && !isAdmin) {
+    console.warn('[Financeiro] Tentativa de filtrar boletos sem usuário logado!');
+  }
   
   const filteredBills = userBills.filter(bill => {
     const matchesSearch = bill.description.toLowerCase().includes(searchTerm.toLowerCase());

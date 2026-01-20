@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
   // Realtime Supabase para usuário logado
   useEffect(() => {
-    if (!isSupabaseEnabled() || !user || !user.id) return;
+    console.log('[Perfil] useEffect user:', user);
+    if (!isSupabaseEnabled() || !user || !user.id) {
+      console.warn('[Perfil] Tentativa de buscar perfil sem usuário logado!');
+      return;
+    }
     const fetchUser = async () => {
       const { data, error } = await supabase.from('users').select('*').eq('id', user.id).single();
       if (!error && data) {

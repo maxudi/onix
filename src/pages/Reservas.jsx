@@ -75,7 +75,7 @@ export default function Reservas() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+    console.log('[Reservas] handleSubmit user:', user);
     const newBooking = {
       id: Date.now().toString(),
       userId: user && user.id ? user.id : 'anon',
@@ -85,11 +85,12 @@ export default function Reservas() {
       status: isAdmin ? 'approved' : 'pending',
       createdAt: new Date().toISOString()
     };
-
+    if (!user) {
+      console.warn('[Reservas] Tentativa de criar reserva sem usuário logado!');
+    }
     const updatedBookings = [...bookings, newBooking];
     setBookings(updatedBookings);
     storage.setBookings(updatedBookings);
-
     setShowModal(false);
     setFormData({
       date: '',

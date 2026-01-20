@@ -4,23 +4,38 @@ import {
   DollarSign, 
   Calendar, 
   Bell, 
-  TrendingUp, 
   AlertCircle,
   CheckCircle,
   Clock,
   Users
 } from 'lucide-react';
-import { format, parseISO, isPast, isToday } from 'date-fns';
+import { format, parseISO, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Dashboard() {
-  const { user, isAdmin } = useAuth();
-  const bills = storage.getBills();
-  const bookings = storage.getBookings();
-  const notices = storage.getNotices();
-  const users = storage.getUsers();
+  // Extraímos o 'loading' do contexto para saber quando o Supabase terminou de checar a sessão
+  const { user, isAdmin, loading } = useAuth();
 
-  // Filtrar dados do usuário atual ou todos se admin
+  // Buscamos os dados do storage local
+  const bills = storage.getBills() || [];
+  const bookings = storage.getBookings() || [];
+  const notices = storage.getNotices() || [];
+  const usersList = storage.getUsers() || [];
+
+  // --- PROTEÇÃO DE CARREGAMENTO ---
+  // Se o AuthContext ainda estiver buscando o usuário, mostramos um estado de carregamento.
+  // Isso impede que as linhas abaixo tentem ler 'user.id' enquanto 'user' é null.
+  if (loading || !user) {
+    console.log('[Dashboard] loading:', loading, 'user:', user);
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center space-y-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+        <p className="text-gray-500 font-medium">Sincronizando dados do condomínio...</p>
+      </div>
+    );
+  }
+
+  // A partir daqui, é seguro usar 'user', pois o 'if' acima garantiu que ele existe.
   const userBills = isAdmin ? bills : bills.filter(b => b.userId === user.id);
   const userBookings = isAdmin ? bookings : bookings.filter(b => b.userId === user.id);
 
@@ -35,7 +50,7 @@ export default function Dashboard() {
     return !isPast(bookingDate) && b.status === 'approved';
   });
 
-  const recentNotices = notices
+  const recentNotices = [...notices]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     .slice(0, 3);
 
@@ -43,7 +58,7 @@ export default function Dashboard() {
     ? [
         {
           name: 'Total de Moradores',
-          value: users.filter(u => u.role === 'resident').length,
+          value: usersList.filter(u => u.role === 'resident').length,
           icon: Users,
           color: 'blue'
         },
@@ -135,6 +150,15 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => {
           const Icon = stat.icon;
+          // Ajuste dinâmico de cores Tailwind para garantir que funcionem com o build
+          const colorClasses = {
+            blue: 'bg-blue-100 text-blue-600',
+            yellow: 'bg-yellow-100 text-yellow-600',
+            purple: 'bg-purple-100 text-purple-600',
+            green: 'bg-green-100 text-green-600',
+            red: 'bg-red-100 text-red-600'
+          };
+          
           return (
             <div key={stat.name} className="card">
               <div className="flex items-center justify-between">
@@ -145,8 +169,8 @@ export default function Dashboard() {
                     <p className="mt-1 text-xs text-gray-500">{stat.subtitle}</p>
                   )}
                 </div>
-                <div className={`p-3 rounded-lg bg-${stat.color}-100`}>
-                  <Icon className={`w-6 h-6 text-${stat.color}-600`} />
+                <div className={`p-3 rounded-lg ${colorClasses[stat.color]}`}>
+                  <Icon className="w-6 h-6" />
                 </div>
               </div>
             </div>
@@ -170,7 +194,7 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-4">
               {userBills.slice(0, 3).map((bill) => (
-                <div key={bill.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors">
+                <div key={bill.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
                   <div className="flex-1">
                     <p className="font-medium text-gray-900">{bill.description}</p>
                     <p className="text-sm text-gray-500 mt-1">
@@ -204,12 +228,10 @@ export default function Dashboard() {
           ) : (
             <div className="space-y-4">
               {recentNotices.map((notice) => (
-                <div key={notice.id} className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors">
+                <div key={notice.id} className="p-4 border border-gray-200 rounded-lg">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="font-medium text-gray-900">{notice.title}</h3>
-                    {notice.isPinned && (
-                      <span className="text-primary-600">📌</span>
-                    )}
+                    {notice.isPinned && <span className="text-primary-600">📌</span>}
                   </div>
                   <p className="text-sm text-gray-600 line-clamp-2">{notice.content}</p>
                   <p className="text-xs text-gray-500 mt-2">
@@ -220,41 +242,6 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-
-        {/* Próximas Reservas */}
-        {!isAdmin && (
-          <div className="card lg:col-span-2">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-900">Próximas Reservas</h2>
-              <Calendar className="w-5 h-5 text-gray-400" />
-            </div>
-
-            {upcomingBookings.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-3 text-gray-300" />
-                <p>Nenhuma reserva agendada</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {upcomingBookings.map((booking) => (
-                  <div key={booking.id} className="p-4 border border-gray-200 rounded-lg hover:border-primary-300 transition-colors">
-                    <div className="flex items-start justify-between mb-2">
-                      <h3 className="font-medium text-gray-900">{booking.event}</h3>
-                      <span className={`px-2 py-1 text-xs font-medium border rounded ${getStatusColor(booking.status)}`}>
-                        {getStatusText(booking.status)}
-                      </span>
-                    </div>
-                    <div className="space-y-1 text-sm text-gray-600">
-                      <p>📅 {format(parseISO(booking.date), "dd 'de' MMMM, yyyy", { locale: ptBR })}</p>
-                      <p>🕐 {booking.startTime} - {booking.endTime}</p>
-                      <p>👥 {booking.guests} convidados</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </div>
   );
