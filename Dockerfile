@@ -22,6 +22,8 @@ RUN npm ci
 # Copy source code
 COPY . .
 
+COPY .env ./
+
 # Agora o build terá acesso às variáveis reais
 RUN npm run build
 
