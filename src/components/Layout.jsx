@@ -57,13 +57,13 @@ export default function Layout({ children }) {
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-10 h-10 bg-primary-100 rounded-full">
                 <span className="text-sm font-semibold text-primary-600">
-                  {user?.name?.charAt(0).toUpperCase()}
+                  {user && user.name ? user.name.charAt(0).toUpperCase() : '?'}
                 </span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
+                <p className="text-sm font-medium text-gray-900 truncate">{user && user.name ? user.name : 'Visitante'}</p>
                 <p className="text-xs text-gray-500 truncate">
-                  {isAdmin ? 'Administrador' : `Unidade ${user?.unit}`}
+                  {isAdmin ? 'Administrador' : user && user.unit ? `Unidade ${user.unit}` : 'Sem unidade'}
                 </p>
               </div>
             </div>
@@ -143,13 +143,13 @@ export default function Layout({ children }) {
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center w-10 h-10 bg-primary-100 rounded-full">
                   <span className="text-sm font-semibold text-primary-600">
-                    {user?.name?.charAt(0).toUpperCase()}
+                    {user && user.name ? user.name.charAt(0).toUpperCase() : '?'}
                   </span>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 truncate">{user?.name}</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{user && user.name ? user.name : 'Visitante'}</p>
                   <p className="text-xs text-gray-500 truncate">
-                    {isAdmin ? 'Administrador' : `Unidade ${user?.unit}`}
+                    {isAdmin ? 'Administrador' : user && user.unit ? `Unidade ${user.unit}` : 'Sem unidade'}
                   </p>
                 </div>
               </div>
