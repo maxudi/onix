@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { storage } from '../services/storage';
 import { 
   DollarSign, 
   Search, 
@@ -18,8 +17,7 @@ import { ptBR } from 'date-fns/locale';
 export default function Financeiro() {
   const { user, isAdmin, loading } = useAuth();
   
-  // Inicializamos com o storage ou array vazio
-  const [bills, setBills] = useState(storage.getBills() || []);
+  const [bills, setBills] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedBill, setSelectedBill] = useState(null);
@@ -39,7 +37,7 @@ export default function Financeiro() {
         
         if (!error && data) {
           setBills(data);
-          storage.setBills(data); // Sincroniza cache local
+          // storage removed: bills state only from Supabase
         }
       } catch (err) {
         console.error("Erro ao buscar boletos no Supabase:", err);
@@ -96,7 +94,7 @@ export default function Financeiro() {
       bill.id === billId ? { ...bill, status: 'paid', paidAt: updatedStatus.paid_at } : bill
     );
     setBills(updatedBills);
-    storage.setBills(updatedBills);
+    // storage removed: bills state only from Supabase
     setSelectedBill(null);
   };
 

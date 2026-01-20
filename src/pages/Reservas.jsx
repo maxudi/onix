@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { storage } from '../services/storage';
+// storage removed: all data now from Supabase only
 import { 
   Calendar as CalendarIcon, 
   Clock, 
@@ -16,7 +16,7 @@ import { ptBR } from 'date-fns/locale';
 
 export default function Reservas() {
   const { user, isAdmin, loading } = useAuth();
-  const [bookings, setBookings] = useState(storage.getBookings() || []);
+  const [bookings, setBookings] = useState([]);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -44,7 +44,7 @@ export default function Reservas() {
         
         if (!error && data) {
           setBookings(data);
-          storage.setBookings(data); // Sincroniza cache local
+          // storage removed: bookings state only from Supabase
         }
       } catch (err) {
         console.error("Erro ao buscar reservas no Supabase:", err);
@@ -107,12 +107,10 @@ export default function Reservas() {
       if (!error && data) {
         const updated = [...bookings, data[0]];
         setBookings(updated);
-        storage.setBookings(updated);
       }
     } else {
       const updated = [...bookings, { id: Date.now().toString(), ...newBookingData }];
       setBookings(updated);
-      storage.setBookings(updated);
     }
     
     setShowModal(false);
@@ -125,7 +123,7 @@ export default function Reservas() {
     }
     const updated = bookings.map(b => b.id === id ? { ...b, status } : b);
     setBookings(updated);
-    storage.setBookings(updated);
+    // storage removed: bookings state only from Supabase
   };
 
   const handleDelete = async (bookingId) => {
@@ -135,7 +133,6 @@ export default function Reservas() {
         }
         const updated = bookings.filter(b => b.id !== bookingId);
         setBookings(updated);
-        storage.setBookings(updated);
     }
   };
 

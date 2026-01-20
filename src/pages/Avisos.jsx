@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { storage } from '../services/storage';
+// storage removed: all data now from Supabase only
 import { 
   Bell, 
   Plus, 
@@ -18,7 +18,7 @@ import { ptBR } from 'date-fns/locale';
 
 export default function Avisos() {
   const { user, isAdmin, loading } = useAuth();
-  const [notices, setNotices] = useState(storage.getNotices() || []);
+  const [notices, setNotices] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -43,7 +43,7 @@ export default function Avisos() {
         
         if (!error && data) {
           setNotices(data);
-          storage.setNotices(data); // Sincroniza o cache local
+          // storage removed: notices state only from Supabase
         }
       } catch (err) {
         console.error("Erro ao carregar avisos do Supabase:", err);
@@ -95,14 +95,12 @@ export default function Avisos() {
       if (!error && data) {
         const updated = [data[0], ...notices];
         setNotices(updated);
-        storage.setNotices(updated);
       }
     } else {
       // Fallback local se o banco estiver offline
       const localNotice = { id: Date.now().toString(), ...newNoticeData };
       const updated = [localNotice, ...notices];
       setNotices(updated);
-      storage.setNotices(updated);
     }
 
     setShowModal(false);
@@ -119,7 +117,6 @@ export default function Avisos() {
 
     const updated = notices.map(n => n.id === noticeId ? { ...n, isPinned: newPinnedStatus } : n);
     setNotices(updated);
-    storage.setNotices(updated);
   };
 
   const handleDelete = async (noticeId) => {
@@ -129,7 +126,6 @@ export default function Avisos() {
       }
       const updated = notices.filter(n => n.id !== noticeId);
       setNotices(updated);
-      storage.setNotices(updated);
     }
   };
 

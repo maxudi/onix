@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
-import { storage } from '../services/storage';
+// storage removed: all data now from Supabase only
 import { useAuth } from '../contexts/AuthContext';
 import { Users, Home, Plus, Edit, Trash2, Search, Building2 } from 'lucide-react';
 
@@ -8,8 +8,8 @@ export default function Admin() {
   const { user, loading } = useAuth(); 
   
   // Inicializamos com dados do storage ou array vazio
-  const [users, setUsers] = useState(storage.getUsers() || []);
-  const [units, setUnits] = useState(storage.getUnits() || []);
+  const [users, setUsers] = useState([]);
+  const [units, setUnits] = useState([]);
   const [activeTab, setActiveTab] = useState('residents');
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
@@ -98,7 +98,6 @@ export default function Admin() {
       : [...users, { id: Date.now().toString(), ...residentForm, role: 'resident', createdAt: new Date().toISOString() }];
     
     setUsers(updatedData);
-    storage.setUsers(updatedData);
     handleCloseModal();
   };
 
@@ -109,7 +108,6 @@ export default function Admin() {
       : [...units, { id: Date.now().toString(), ...unitForm }];
     
     setUnits(updatedData);
-    storage.setUnits(updatedData);
     handleCloseModal();
   };
 
