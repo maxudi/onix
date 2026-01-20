@@ -71,8 +71,8 @@ export default function Avisos() {
     const newNotice = {
       id: Date.now().toString(),
       ...formData,
-      author: user.name,
-      authorId: user.id,
+      author: user && user.name ? user.name : 'Desconhecido',
+      authorId: user && user.id ? user.id : 'anon',
       isPinned: false,
       createdAt: new Date().toISOString()
     };
