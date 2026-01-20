@@ -1,14 +1,57 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
-  // Realtime Supabase para usuário logado
+import { useAuth } from '../contexts/AuthContext';
+import { storage } from '../services/storage';
+import { 
+  User, Mail, Phone, Home, CreditCard, Lock, Save, AlertCircle, CheckCircle 
+} from 'lucide-react';
+
+export default function Perfil() {
+  const { user, updateUser, loading } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
+  
+  // Inicializamos o formulário com valores vazios ou dados do usuário se já existirem
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    cpf: '',
+    unit: ''
+  });
+
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+
+  // Efeito para sincronizar os dados do usuário com o formulário quando o Auth terminar de carregar
   useEffect(() => {
-    console.log('[Perfil] useEffect user:', user);
-    if (!isSupabaseEnabled() || !user || !user.id) {
-      console.warn('[Perfil] Tentativa de buscar perfil sem usuário logado!');
-      return;
+    if (user) {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        cpf: user.cpf || '',
+        unit: user.unit || ''
+      });
     }
+  }, [user]);
+
+  // Realtime Supabase movido para DENTRO do componente para ter acesso ao 'user'
+  useEffect(() => {
+    if (!isSupabaseEnabled() || !user?.id) return;
+
     const fetchUser = async () => {
-      const { data, error } = await supabase.from('users').select('*').eq('id', user.id).single();
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+        
       if (!error && data) {
         setFormData({
           name: data.name,
@@ -19,40 +62,38 @@ import { supabase, isSupabaseEnabled } from '../lib/supabase';
         });
       }
     };
+
     fetchUser();
+
     const channel = supabase
       .channel('public:users-perfil')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'users', filter: user && user.id ? `id=eq.${user.id}` : '' }, payload => {
-        if (payload) fetchUser();
-      })
+      .on('postgres_changes', 
+        { 
+          event: '*', 
+          schema: 'public', 
+          table: 'users', 
+          filter: `id=eq.${user.id}` 
+        }, 
+        payload => {
+          if (payload) fetchUser();
+        }
+      )
       .subscribe();
+
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user && user.id]);
-import { useAuth } from '../contexts/AuthContext';
-import { User, Mail, Phone, Home, CreditCard, Lock, Save, AlertCircle, CheckCircle } from 'lucide-react';
+  }, [user?.id]);
 
-export default function Perfil() {
-  const { user, updateUser } = useAuth();
-  const [isEditing, setIsEditing] = useState(false);
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
-  const [errorMessage, setErrorMessage] = useState('');
-  
-  const [formData, setFormData] = useState({
-    name: user?.name || '',
-    email: user?.email || '',
-    phone: user?.phone || '',
-    cpf: user?.cpf || '',
-    unit: user?.unit || ''
-  });
-
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
+  // --- PROTEÇÃO DE CARREGAMENTO ---
+  if (loading || !user) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 space-y-4">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+        <p className="text-gray-500 font-medium">Carregando seu perfil...</p>
+      </div>
+    );
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -92,8 +133,6 @@ export default function Perfil() {
       return;
     }
 
-    // Aqui você implementaria a lógica real de mudança de senha
-    // Por enquanto, apenas simulamos sucesso
     setShowPasswordForm(false);
     setSuccessMessage('Senha alterada com sucesso!');
     setPasswordData({
@@ -124,7 +163,6 @@ export default function Perfil() {
         <p className="mt-2 text-gray-600">Gerencie suas informações pessoais</p>
       </div>
 
-      {/* Success/Error Messages */}
       {successMessage && (
         <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex items-start gap-3">
           <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
@@ -144,17 +182,13 @@ export default function Perfil() {
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900">Informações Pessoais</h2>
           {!isEditing && (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="btn-primary"
-            >
+            <button onClick={() => setIsEditing(true)} className="btn-primary">
               Editar Perfil
             </button>
           )}
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Avatar */}
           <div className="flex items-center gap-6">
             <div className="flex items-center justify-center w-24 h-24 bg-primary-100 rounded-full">
               <span className="text-3xl font-bold text-primary-600">
@@ -169,117 +203,21 @@ export default function Perfil() {
             </div>
           </div>
 
-          {/* Form Fields */}
           <div className="grid md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nome Completo
-              </label>
-              <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="input-field pl-11 disabled:bg-gray-50 disabled:text-gray-600"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="input-field pl-11 disabled:bg-gray-50 disabled:text-gray-600"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Telefone
-              </label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="input-field pl-11 disabled:bg-gray-50 disabled:text-gray-600"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                CPF
-              </label>
-              <div className="relative">
-                <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="text"
-                  name="cpf"
-                  value={formData.cpf}
-                  onChange={handleChange}
-                  disabled={!isEditing}
-                  className="input-field pl-11 disabled:bg-gray-50 disabled:text-gray-600"
-                  required
-                />
-              </div>
-            </div>
-
+            <ProfileInput label="Nome Completo" name="name" value={formData.name} onChange={handleChange} disabled={!isEditing} Icon={User} />
+            <ProfileInput label="Email" name="email" value={formData.email} onChange={handleChange} disabled={!isEditing} Icon={Mail} />
+            <ProfileInput label="Telefone" name="phone" value={formData.phone} onChange={handleChange} disabled={!isEditing} Icon={Phone} />
+            <ProfileInput label="CPF" name="cpf" value={formData.cpf} onChange={handleChange} disabled={!isEditing} Icon={CreditCard} />
             {user?.role !== 'admin' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Unidade/Apartamento
-                </label>
-                <div className="relative">
-                  <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    name="unit"
-                    value={formData.unit}
-                    onChange={handleChange}
-                    disabled={!isEditing}
-                    className="input-field pl-11 disabled:bg-gray-50 disabled:text-gray-600"
-                    required
-                  />
-                </div>
-              </div>
+               <ProfileInput label="Unidade/Apartamento" name="unit" value={formData.unit} onChange={handleChange} disabled={!isEditing} Icon={Home} />
             )}
           </div>
 
-          {/* Action Buttons */}
           {isEditing && (
             <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="flex-1 btn-secondary"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="flex-1 btn-primary flex items-center justify-center gap-2"
-              >
-                <Save className="w-5 h-5" />
-                Salvar Alterações
+              <button type="button" onClick={handleCancel} className="flex-1 btn-secondary">Cancelar</button>
+              <button type="submit" className="flex-1 btn-primary flex items-center justify-center gap-2">
+                <Save className="w-5 h-5" /> Salvar Alterações
               </button>
             </div>
           )}
@@ -294,112 +232,48 @@ export default function Perfil() {
             <p className="text-sm text-gray-600 mt-1">Altere sua senha de acesso</p>
           </div>
           {!showPasswordForm && (
-            <button
-              onClick={() => setShowPasswordForm(true)}
-              className="btn-secondary flex items-center gap-2"
-            >
-              <Lock className="w-5 h-5" />
-              Alterar Senha
+            <button onClick={() => setShowPasswordForm(true)} className="btn-secondary flex items-center gap-2">
+              <Lock className="w-5 h-5" /> Alterar Senha
             </button>
           )}
         </div>
 
         {showPasswordForm && (
           <form onSubmit={handlePasswordSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Senha Atual
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  name="currentPassword"
-                  value={passwordData.currentPassword}
-                  onChange={handlePasswordChange}
-                  className="input-field pl-11"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Nova Senha
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  name="newPassword"
-                  value={passwordData.newPassword}
-                  onChange={handlePasswordChange}
-                  className="input-field pl-11"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Confirmar Nova Senha
-              </label>
-              <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  value={passwordData.confirmPassword}
-                  onChange={handlePasswordChange}
-                  className="input-field pl-11"
-                  placeholder="••••••••"
-                  required
-                />
-              </div>
-            </div>
-
+            <PasswordInput label="Senha Atual" name="currentPassword" value={passwordData.currentPassword} onChange={handlePasswordChange} />
+            <PasswordInput label="Nova Senha" name="newPassword" value={passwordData.newPassword} onChange={handlePasswordChange} />
+            <PasswordInput label="Confirmar Nova Senha" name="confirmPassword" value={passwordData.confirmPassword} onChange={handlePasswordChange} />
             <div className="flex gap-3 pt-4">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPasswordForm(false);
-                  setPasswordData({
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: ''
-                  });
-                  setErrorMessage('');
-                }}
-                className="flex-1 btn-secondary"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="flex-1 btn-primary"
-              >
-                Alterar Senha
-              </button>
+              <button type="button" onClick={() => setShowPasswordForm(false)} className="flex-1 btn-secondary">Cancelar</button>
+              <button type="submit" className="flex-1 btn-primary">Alterar Senha</button>
             </div>
           </form>
         )}
       </div>
+    </div>
+  );
+}
 
-      {/* Account Info */}
-      <div className="card bg-gray-50">
-        <h3 className="text-sm font-medium text-gray-700 mb-4">Informações da Conta</h3>
-        <div className="space-y-2 text-sm text-gray-600">
-          <p>
-            <span className="font-medium">Tipo de conta:</span>{' '}
-            {user?.role === 'admin' ? 'Administrador' : 'Morador'}
-          </p>
-          <p>
-            <span className="font-medium">Membro desde:</span>{' '}
-            {user?.createdAt ? new Date(user.createdAt).toLocaleDateString('pt-BR') : 'N/A'}
-          </p>
-        </div>
+// Subcomponentes para limpeza do código
+function ProfileInput({ label, name, value, onChange, disabled, Icon }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <div className="relative">
+        <Icon className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <input type="text" name={name} value={value} onChange={onChange} disabled={disabled} className="input-field pl-11 disabled:bg-gray-50 disabled:text-gray-600" required />
+      </div>
+    </div>
+  );
+}
+
+function PasswordInput({ label, name, value, onChange }) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">{label}</label>
+      <div className="relative">
+        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+        <input type="password" name={name} value={value} onChange={onChange} className="input-field pl-11" placeholder="••••••••" required />
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Building2, Mail, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,8 +8,15 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  // Proteção extra: se o usuário já estiver logado, redireciona para o dashboard
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard');
+    }
+  }, [user, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -17,10 +24,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      await login(email, password);
-      navigate('/dashboard');
+      const sessionUser = await login(email, password);
+      if (sessionUser) {
+        navigate('/dashboard');
+      }
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Falha ao realizar login. Verifique suas credenciais.');
     } finally {
       setLoading(false);
     }
@@ -85,7 +94,7 @@ export default function Login() {
             </div>
 
             <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
                 <span className="text-gray-600">Lembrar-me</span>
               </label>

@@ -42,10 +42,12 @@ export default function Register() {
 
     try {
       const { confirmPassword, ...userData } = formData;
+      // Chamamos o registro. O AuthContext deve atualizar o estado 'user' automaticamente.
       await register(userData);
+      // Redirecionamos para o dashboard onde o 'loading' do AuthContext garantirá a segurança.
       navigate('/dashboard');
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Erro ao criar conta. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -76,9 +78,7 @@ export default function Register() {
             <div className="grid md:grid-cols-2 gap-4">
               {/* Nome */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Nome Completo
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Nome Completo</label>
                 <div className="relative">
                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -95,9 +95,7 @@ export default function Register() {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -114,9 +112,7 @@ export default function Register() {
 
               {/* Telefone */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Telefone
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Telefone</label>
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -133,9 +129,7 @@ export default function Register() {
 
               {/* CPF */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  CPF
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">CPF</label>
                 <div className="relative">
                   <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -151,10 +145,8 @@ export default function Register() {
               </div>
 
               {/* Unidade */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Unidade/Apartamento
-                </label>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Unidade/Apartamento</label>
                 <div className="relative">
                   <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -173,9 +165,7 @@ export default function Register() {
             <div className="grid md:grid-cols-2 gap-4">
               {/* Senha */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Senha
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -192,9 +182,7 @@ export default function Register() {
 
               {/* Confirmar Senha */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Confirmar Senha
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar Senha</label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <input
@@ -213,7 +201,7 @@ export default function Register() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed mt-4"
             >
               {loading ? 'Criando conta...' : 'Criar Conta'}
             </button>

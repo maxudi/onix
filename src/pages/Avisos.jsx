@@ -17,30 +17,36 @@ import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Avisos() {
-  const { user, isAdmin } = useAuth();
-  const [notices, setNotices] = useState(storage.getNotices());
+  // Extraímos loading para garantir que não usemos 'user' antes da hora
+  const { user, isAdmin, loading } = useAuth();
+  const [notices, setNotices] = useState(storage.getNotices() || []);
 
   // Realtime Supabase para avisos
   useEffect(() => {
     if (!isSupabaseEnabled()) return;
-    // Busca inicial
+    
     const fetchNotices = async () => {
-      const { data, error } = await supabase.from('notices').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase
+        .from('notices')
+        .select('*')
+        .order('created_at', { ascending: false });
       if (!error && data) setNotices(data);
     };
+    
     fetchNotices();
 
-    // Canal realtime
     const channel = supabase
       .channel('public:notices')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'notices' }, payload => {
         if (payload) fetchNotices();
       })
       .subscribe();
+      
     return () => {
       supabase.removeChannel(channel);
     };
   }, []);
+
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCategory, setFilterCategory] = useState('all');
@@ -52,33 +58,42 @@ export default function Avisos() {
     priority: 'medium'
   });
 
-  // Filtrar avisos
-  const filteredNotices = notices.filter(notice => {
+  // --- PROTEÇÃO DE CARREGAMENTO ---
+  // Bloqueamos o processamento se o usuário ainda não estiver pronto
+  if (loading || !user) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+        <p className="ml-3 text-gray-600">Sincronizando mural de avisos...</p>
+      </div>
+    );
+  }
+
+  // Filtrar avisos - Agora é seguro pois o 'if' acima garantiu a existência de dados
+  const filteredNotices = (notices || []).filter(notice => {
     const matchesSearch = 
-      notice.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      notice.content.toLowerCase().includes(searchTerm.toLowerCase());
+      notice.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      notice.content?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = filterCategory === 'all' || notice.category === filterCategory;
     return matchesSearch && matchesCategory;
   });
 
-  // Separar avisos fixados
   const pinnedNotices = filteredNotices.filter(n => n.isPinned);
   const regularNotices = filteredNotices.filter(n => !n.isPinned);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    console.log('[Avisos] handleSubmit user:', user);
+    
+    // Agora é 100% seguro acessar user.name e user.id
     const newNotice = {
       id: Date.now().toString(),
       ...formData,
-      author: user && user.name ? user.name : 'Desconhecido',
-      authorId: user && user.id ? user.id : 'anon',
+      author: user.name || 'Admin',
+      authorId: user.id,
       isPinned: false,
       createdAt: new Date().toISOString()
     };
-    if (!user) {
-      console.warn('[Avisos] Tentativa de criar aviso sem usuário logado!');
-    }
+
     const updatedNotices = [newNotice, ...notices];
     setNotices(updatedNotices);
     storage.setNotices(updatedNotices);
@@ -121,25 +136,20 @@ export default function Avisos() {
 
   const getPriorityBadge = (priority) => {
     const badges = {
-      high: 'badge-danger',
-      medium: 'badge-warning',
-      low: 'badge-info'
+      high: 'bg-red-100 text-red-800',
+      medium: 'bg-yellow-100 text-yellow-800',
+      low: 'bg-blue-100 text-blue-800'
     };
-    return badges[priority] || badges.medium;
+    return `px-2 py-0.5 rounded text-xs font-medium ${badges[priority] || badges.medium}`;
   };
 
   const getPriorityText = (priority) => {
-    const texts = {
-      high: 'Alta',
-      medium: 'Média',
-      low: 'Baixa'
-    };
+    const texts = { high: 'Alta', medium: 'Média', low: 'Baixa' };
     return texts[priority] || 'Média';
   };
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Mural de Avisos</h1>
@@ -156,7 +166,6 @@ export default function Avisos() {
         )}
       </div>
 
-      {/* Filters */}
       <div className="card">
         <div className="flex flex-col sm:flex-row gap-4">
           <div className="flex-1">
@@ -171,7 +180,6 @@ export default function Avisos() {
               />
             </div>
           </div>
-
           <div className="sm:w-48">
             <select
               value={filterCategory}
@@ -189,250 +197,126 @@ export default function Avisos() {
         </div>
       </div>
 
-      {/* Pinned Notices */}
       {pinnedNotices.length > 0 && (
-        <div>
-          <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+        <div className="space-y-4">
+          <h2 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
             <Pin className="w-5 h-5 text-primary-600" />
             Avisos Fixados
           </h2>
-          <div className="space-y-4">
-            {pinnedNotices.map((notice) => {
-              const categoryConfig = getCategoryConfig(notice.category);
-              const CategoryIcon = categoryConfig.icon;
-
-              return (
-                <div
-                  key={notice.id}
-                  className="card border-2 border-primary-200 bg-primary-50/30"
-                >
-                  <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-lg bg-${categoryConfig.color}-100`}>
-                      <CategoryIcon className={`w-6 h-6 text-${categoryConfig.color}-600`} />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4 mb-2">
-                        <div>
-                          <h3 className="text-xl font-bold text-gray-900">{notice.title}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={`badge bg-${categoryConfig.color}-100 text-${categoryConfig.color}-800`}>
-                              {categoryConfig.label}
-                            </span>
-                            <span className={getPriorityBadge(notice.priority)}>
-                              {getPriorityText(notice.priority)}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {isAdmin && (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handlePin(notice.id)}
-                              className="p-2 text-primary-600 hover:bg-primary-100 rounded-lg transition-colors"
-                              title="Desafixar"
-                            >
-                              <Pin className="w-5 h-5 fill-current" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(notice.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Excluir"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <p className="text-gray-700 whitespace-pre-line">{notice.content}</p>
-
-                      <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
-                        <span>Por {notice.author}</span>
-                        <span>•</span>
-                        <span>{format(parseISO(notice.createdAt), "dd 'de' MMMM, yyyy 'às' HH:mm", { locale: ptBR })}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid gap-4">
+            {pinnedNotices.map((notice) => (
+               <NoticeCard 
+                key={notice.id} 
+                notice={notice} 
+                isAdmin={isAdmin} 
+                onPin={handlePin} 
+                onDelete={handleDelete}
+                getCategoryConfig={getCategoryConfig}
+                getPriorityBadge={getPriorityBadge}
+                getPriorityText={getPriorityText}
+              />
+            ))}
           </div>
         </div>
       )}
 
-      {/* Regular Notices */}
-      <div>
-        {pinnedNotices.length > 0 && (
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Outros Avisos</h2>
-        )}
-        
+      <div className="space-y-4">
+        {pinnedNotices.length > 0 && <h2 className="text-lg font-semibold text-gray-900">Outros Avisos</h2>}
         {regularNotices.length === 0 ? (
           <div className="card text-center py-12">
             <Bell className="w-16 h-16 mx-auto mb-4 text-gray-300" />
             <p className="text-gray-500">Nenhum aviso encontrado</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {regularNotices.map((notice) => {
-              const categoryConfig = getCategoryConfig(notice.category);
-              const CategoryIcon = categoryConfig.icon;
-
-              return (
-                <div key={notice.id} className="card hover:shadow-md transition-shadow">
-                  <div className="flex items-start gap-4">
-                    <div className={`p-3 rounded-lg bg-${categoryConfig.color}-100`}>
-                      <CategoryIcon className={`w-6 h-6 text-${categoryConfig.color}-600`} />
-                    </div>
-
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-4 mb-2">
-                        <div>
-                          <h3 className="text-lg font-bold text-gray-900">{notice.title}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={`badge bg-${categoryConfig.color}-100 text-${categoryConfig.color}-800`}>
-                              {categoryConfig.label}
-                            </span>
-                            <span className={getPriorityBadge(notice.priority)}>
-                              {getPriorityText(notice.priority)}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {isAdmin && (
-                          <div className="flex gap-2">
-                            <button
-                              onClick={() => handlePin(notice.id)}
-                              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                              title="Fixar"
-                            >
-                              <Pin className="w-5 h-5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(notice.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                              title="Excluir"
-                            >
-                              <Trash2 className="w-5 h-5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <p className="text-gray-700 whitespace-pre-line">{notice.content}</p>
-
-                      <div className="flex items-center gap-4 mt-4 text-sm text-gray-500">
-                        <span>Por {notice.author}</span>
-                        <span>•</span>
-                        <span>{format(parseISO(notice.createdAt), "dd 'de' MMMM, yyyy 'às' HH:mm", { locale: ptBR })}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+          <div className="grid gap-4">
+            {regularNotices.map((notice) => (
+              <NoticeCard 
+                key={notice.id} 
+                notice={notice} 
+                isAdmin={isAdmin} 
+                onPin={handlePin} 
+                onDelete={handleDelete}
+                getCategoryConfig={getCategoryConfig}
+                getPriorityBadge={getPriorityBadge}
+                getPriorityText={getPriorityText}
+              />
+            ))}
           </div>
         )}
       </div>
 
-      {/* New Notice Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
           <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto">
             <div className="flex items-start justify-between mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900">Novo Aviso</h3>
-                <p className="text-sm text-gray-500 mt-1">Publique um comunicado para os moradores</p>
-              </div>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                ✕
-              </button>
+              <h3 className="text-xl font-bold text-gray-900">Novo Aviso</h3>
+              <button onClick={() => setShowModal(false)} className="text-gray-400">✕</button>
             </div>
-
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Título
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="input-field"
-                  placeholder="Ex: Manutenção do Elevador"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Conteúdo
-                </label>
-                <textarea
-                  value={formData.content}
-                  onChange={(e) => setFormData({ ...formData, content: e.target.value })}
-                  className="input-field min-h-[150px] resize-none"
-                  placeholder="Descreva o aviso em detalhes..."
-                  required
-                />
-              </div>
-
+              <input 
+                type="text" 
+                placeholder="Título" 
+                className="input-field" 
+                value={formData.title} 
+                onChange={e => setFormData({...formData, title: e.target.value})} 
+                required 
+              />
+              <textarea 
+                placeholder="Conteúdo" 
+                className="input-field min-h-[150px]" 
+                value={formData.content} 
+                onChange={e => setFormData({...formData, content: e.target.value})} 
+                required 
+              />
               <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Categoria
-                  </label>
-                  <select
-                    value={formData.category}
-                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="info">Informação</option>
-                    <option value="maintenance">Manutenção</option>
-                    <option value="meeting">Assembleia</option>
-                    <option value="rules">Regras</option>
-                    <option value="general">Geral</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Prioridade
-                  </label>
-                  <select
-                    value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
-                    className="input-field"
-                  >
-                    <option value="low">Baixa</option>
-                    <option value="medium">Média</option>
-                    <option value="high">Alta</option>
-                  </select>
-                </div>
+                <select className="input-field" value={formData.category} onChange={e => setFormData({...formData, category: e.target.value})}>
+                  <option value="info">Informação</option>
+                  <option value="maintenance">Manutenção</option>
+                </select>
+                <select className="input-field" value={formData.priority} onChange={e => setFormData({...formData, priority: e.target.value})}>
+                  <option value="low">Baixa</option>
+                  <option value="medium">Média</option>
+                  <option value="high">Alta</option>
+                </select>
               </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 btn-secondary"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 btn-primary"
-                >
-                  Publicar Aviso
-                </button>
-              </div>
+              <button type="submit" className="w-full btn-primary mt-4">Publicar Aviso</button>
             </form>
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Subcomponente para manter o código limpo
+function NoticeCard({ notice, isAdmin, onPin, onDelete, getCategoryConfig, getPriorityBadge, getPriorityText }) {
+  const config = getCategoryConfig(notice.category);
+  const Icon = config.icon;
+
+  return (
+    <div className={`card hover:shadow-md transition-all ${notice.isPinned ? 'border-l-4 border-primary-600' : ''}`}>
+      <div className="flex items-start gap-4">
+        <div className={`p-3 rounded-lg bg-${config.color}-100`}>
+          <Icon className={`w-6 h-6 text-${config.color}-600`} />
+        </div>
+        <div className="flex-1">
+          <div className="flex justify-between items-start">
+            <h3 className="text-lg font-bold text-gray-900">{notice.title}</h3>
+            {isAdmin && (
+              <div className="flex gap-2">
+                <button onClick={() => onPin(notice.id)} className="p-1 text-gray-400 hover:text-primary-600"><Pin className={`w-4 h-4 ${notice.isPinned ? 'fill-current text-primary-600' : ''}`} /></button>
+                <button onClick={() => onDelete(notice.id)} className="p-1 text-gray-400 hover:text-red-600"><Trash2 className="w-4 h-4" /></button>
+              </div>
+            )}
+          </div>
+          <p className="text-gray-700 mt-2 whitespace-pre-line">{notice.content}</p>
+          <div className="mt-4 flex items-center gap-3 text-xs text-gray-500">
+            <span className={getPriorityBadge(notice.priority)}>{getPriorityText(notice.priority)}</span>
+            <span>Por {notice.author}</span>
+            <span>• {format(parseISO(notice.createdAt), "dd/MM/yyyy", { locale: ptBR })}</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
