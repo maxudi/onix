@@ -4,7 +4,8 @@ import {
   LayoutDashboard, DollarSign, Calendar, MessageSquare, User, Users, 
   LogOut, Building2, ChevronDown, ChevronRight, FileText, 
   Wrench, Truck, ShieldCheck, ClipboardList, ArrowDownCircle,
-  Smartphone, Bell, Menu, X, Wallet, ChevronLeft
+  Smartphone, Bell, Menu, X, Wallet, ChevronLeft, BarChart3, 
+  FilePieChart, FolderOpen, Droplets, HardHat
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -102,9 +103,11 @@ export default function Layout({ children }) {
               
               {isAdmin && (
                 <>
-                  <div className="px-3 py-2 mt-2 text-[10px] font-black text-gray-400 uppercase tracking-wider">Contas a Pagar</div>
+                  <div className="px-3 py-2 mt-2 text-[10px] font-black text-gray-400 uppercase tracking-wider">Gestão Administrativa</div>
                   <SubmenuLink to="/financeiro/pagamentos" name="Boletos a Pagar" icon={ArrowDownCircle} />
-                  <SubmenuLink to="/financeiro/fornecedores" name="Gestão de Fornecedores" icon={Truck} />
+                  <SubmenuLink to="/financeiro/fornecedores" name="Fornecedores" icon={Truck} />
+                  <SubmenuLink to="/financeiro/prestacao-contas" name="Prestação de Contas" icon={BarChart3} />
+                  <SubmenuLink to="/financeiro/balancetes" name="Balancetes" icon={FilePieChart} />
                 </>
               )}
             </Submenu>
@@ -133,7 +136,8 @@ export default function Layout({ children }) {
               onClick={() => toggleSubmenu('operacional')}
               active={location.pathname.startsWith('/operacional')}
             >
-              <SubmenuLink to="/operacional/servicos" name="Contratação" icon={Truck} />
+              <SubmenuLink to="/operacional/manutencao" name="Plano de Manutenção" icon={HardHat} />
+              <SubmenuLink to="/operacional/leituras" name="Consumo Água/Gás" icon={Droplets} />
               <SubmenuLink to="/operacional/seguranca" name="Câmeras / DVR" icon={ShieldCheck} />
               <SubmenuLink to="/operacional/ocorrencias" name="Ocorrências" icon={ClipboardList} />
             </Submenu>
@@ -149,8 +153,9 @@ export default function Layout({ children }) {
               onClick={() => toggleSubmenu('comunicacao')}
               active={location.pathname.startsWith('/avisos') || location.pathname.startsWith('/documentos')}
             >
-              <SubmenuLink to="/avisos" name="Mural" icon={Bell} />
-              <SubmenuLink to="/comunicacao/assembleias" name="Votos" icon={Users} />
+              <SubmenuLink to="/avisos" name="Mural de Avisos" icon={Bell} />
+              <SubmenuLink to="/comunicacao/documentos" name="Pasta Digital" icon={FolderOpen} />
+              <SubmenuLink to="/comunicacao/assembleias" name="Votos e Atas" icon={Users} />
             </Submenu>
 
             <div className="pt-4 mt-4 border-t border-gray-100">
@@ -197,7 +202,7 @@ export default function Layout({ children }) {
   );
 }
 
-// COMPONENTES AUXILIARES AJUSTADOS
+// COMPONENTES AUXILIARES
 function MenuLink({ to, icon: Icon, name, isCollapsed, color = "text-gray-700" }) {
   return (
     <NavLink

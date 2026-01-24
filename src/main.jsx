@@ -5,22 +5,42 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import Layout from './components/Layout';
 
-// Páginas Existentes
+// --- IMPORTAÇÃO DE PÁGINAS ---
+
+// Autenticação e Base
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
-import Financeiro from './pages/Financeiro'; // Atua como Boleto/Receita
-import Reservas from './pages/Reservas';
-import Avisos from './pages/Avisos';
 import Perfil from './pages/Perfil';
 import Admin from './pages/Admin';
-import Seguranca from './pages/Seguranca';
 import TestaSupabase from './pages/TestaSupabase';
 
-// Novas Páginas (Certifique-se de criar estes arquivos em src/pages/)
+// Módulo Financeiro
+import Financeiro from './pages/Financeiro'; 
+import Boleto from './pages/Boleto';
+import PrestacaoContas from './pages/PrestacaoContas';
+import Balancetes from './pages/Balancetes';
+import Pagamentos from './pages/Pagamentos'; // Certifique-se que o arquivo existe
+import Fornecedores from './pages/Fornecedores'; // Certifique-se que o arquivo existe
+
+// Módulo Banco (Inter)
+import Conciliacao from './pages/Conciliacao'; // Certifique-se que o arquivo existe
+import PixGestao from './pages/PixGestao'; // Certifique-se que o arquivo existe
+
+// Módulo Operacional
+import Manutencao from './pages/Manutencao';
+import Leituras from './pages/Leituras';
 import Servicos from './pages/Servicos'; 
-import Boleto from './pages/Boleto'; // Gestão detalhada/Inter
-import Pagamentos from './pages/Financeiro'; // Inicialmente pode reutilizar ou ser nova
+import Seguranca from './pages/Seguranca';
+import Ocorrencias from './pages/Ocorrencias';
+import Consumo from './pages/Consumo';
+
+// Módulo Comunicação e Reservas
+import Reservas from './pages/Reservas';
+import Avisos from './pages/Avisos';
+import Documentos from './pages/Documentos'; // Pasta Digital
+import Assembleias from './pages/Assembleias'; // Votos e Atas
+
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
@@ -35,62 +55,73 @@ ReactDOM.createRoot(document.getElementById('root')).render(
 
           {/* --- ROTAS PROTEGIDAS (DENTRO DO LAYOUT) --- */}
           
-          {/* Dashboard Geral */}
           <Route path="/dashboard" element={
             <ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>
           } />
 
-          {/* Módulo Financeiro (Contas a Receber / Morador) */}
-          <Route path="/financeiro/boletos" element={
-            <ProtectedRoute><Layout><Boleto /></Layout></ProtectedRoute>
-          } />
+          {/* Módulo Financeiro */}
           <Route path="/financeiro/meus-boletos" element={
             <ProtectedRoute><Layout><Financeiro /></Layout></ProtectedRoute>
           } />
-
-          {/* Módulo Financeiro (Contas a Pagar / Admin) */}
+          
           <Route path="/financeiro/pagamentos" element={
             <ProtectedRoute requireAdmin><Layout><Pagamentos /></Layout></ProtectedRoute>
           } />
-          <Route path="/financeiro/prestacao-contas" element={
-            <ProtectedRoute><Layout><div className="card"><h1>Prestação de Contas (Inter API)</h1><p>Módulo em desenvolvimento...</p></div></Layout></ProtectedRoute>
+
+          <Route path="/financeiro/fornecedores" element={
+            <ProtectedRoute requireAdmin><Layout><Fornecedores /></Layout></ProtectedRoute>
           } />
 
-          {/* Módulo Operacional & Serviços */}
+          <Route path="/financeiro/prestacao-contas" element={
+            <ProtectedRoute requireAdmin><Layout><PrestacaoContas /></Layout></ProtectedRoute>
+          } />
+
+          <Route path="/financeiro/balancetes" element={
+            <ProtectedRoute requireAdmin><Layout><Balancetes /></Layout></ProtectedRoute>
+          } />
+
+          {/* Módulo Gestão Bancária (Inter) */}
+          <Route path="/banco/extrato" element={
+            <ProtectedRoute requireAdmin><Layout><Conciliacao /></Layout></ProtectedRoute>
+          } />
+          <Route path="/banco/pix" element={
+            <ProtectedRoute requireAdmin><Layout><PixGestao /></Layout></ProtectedRoute>
+          } />
+
+          {/* Módulo Operacional */}
+          <Route path="/operacional/manutencao" element={
+            <ProtectedRoute><Layout><Manutencao /></Layout></ProtectedRoute>
+          } />
+          
+          <Route path="/operacional/leituras" element={
+            <ProtectedRoute><Layout><Leituras /></Layout></ProtectedRoute>
+          } />
+
           <Route path="/operacional/servicos" element={
             <ProtectedRoute><Layout><Servicos /></Layout></ProtectedRoute>
           } />
-          <Route path="/operacional/manutencao" element={
-            <ProtectedRoute><Layout><div className="card"><h1>Agenda de Manutenção</h1><p>Próximas visitas de elevadores e bombas...</p></div></Layout></ProtectedRoute>
+
+          <Route path="/operacional/seguranca" element={
+            <ProtectedRoute><Layout><Seguranca /></Layout></ProtectedRoute>
           } />
 
-          {/* Áreas Comuns, Avisos e Documentos */}
+          <Route path="/operacional/ocorrencias" element={
+            <ProtectedRoute><Layout><Ocorrencias /></Layout></ProtectedRoute>
+          } />
+
+          {/* Módulo Comunicação e Social */}
           <Route path="/reservas" element={
             <ProtectedRoute><Layout><Reservas /></Layout></ProtectedRoute>
           } />
           <Route path="/avisos" element={
             <ProtectedRoute><Layout><Avisos /></Layout></ProtectedRoute>
           } />
-          <Route path="/documentos" element={
-            <ProtectedRoute><Layout><div className="card"><h1>Documentos e Atas</h1><p>Repositório de arquivos do condomínio...</p></div></Layout></ProtectedRoute>
+          <Route path="/comunicacao/documentos" element={
+            <ProtectedRoute><Layout><Documentos /></Layout></ProtectedRoute>
           } />
-
-          {/* Gestão Bancária (Inter Webhooks/Pix) */}
-          <Route path="/banco/extrato" element={
-            <ProtectedRoute requireAdmin><Layout><div className="card"><h1>Conciliação Bancária</h1></div></Layout></ProtectedRoute>
+          <Route path="/comunicacao/assembleias" element={
+            <ProtectedRoute><Layout><Assembleias /></Layout></ProtectedRoute>
           } />
-
-          {/* Módulo de Segurança - Tutorial de Câmeras */}
-          <Route
-          path="/operacional/seguranca"
-          element={
-              <ProtectedRoute>
-              <Layout>
-                  <Seguranca />
-              </Layout>
-              </ProtectedRoute>
-        }
-        />
 
           {/* Perfil e Admin */}
           <Route path="/perfil" element={
@@ -100,11 +131,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <ProtectedRoute requireAdmin><Layout><Admin /></Layout></ProtectedRoute>
           } />
 
-          {/* --- REDIRECIONAMENTOS E SEGURANÇA --- */}
-          {/* Fallback para Financeiro */}
-          <Route path="/financeiro" element={<Navigate to="/financeiro/boletos" replace />} />
+          {/* --- REDIRECIONAMENTOS --- */}
+          <Route path="/financeiro" element={<Navigate to="/financeiro/meus-boletos" replace />} />
+          <Route path="/banco" element={<Navigate to="/banco/extrato" replace />} />
+          <Route path="/operacional" element={<Navigate to="/operacional/manutencao" replace />} />
+          <Route path="/comunicacao" element={<Navigate to="/avisos" replace />} />
           
-          {/* Root e 404 */}
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
