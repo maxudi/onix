@@ -23,7 +23,8 @@ export default function Layout({ children }) {
     comunicacao: location.pathname.startsWith('/avisos') || 
                  location.pathname.startsWith('/documentos') || 
                  location.pathname.startsWith('/comunicacao'),
-    banco: location.pathname.startsWith('/banco')
+    banco: location.pathname.startsWith('/banco'),
+    condominos: location.pathname.startsWith('/condominos')
   });
 
   // Atualiza a expansão do menu ao navegar
@@ -35,7 +36,8 @@ export default function Layout({ children }) {
       comunicacao: location.pathname.startsWith('/avisos') || 
                    location.pathname.startsWith('/documentos') || 
                    location.pathname.startsWith('/comunicacao'),
-      banco: location.pathname.startsWith('/banco')
+      banco: location.pathname.startsWith('/banco'),
+      condominos: location.pathname.startsWith('/condominos')
     }));
   }, [location.pathname]);
 
@@ -104,7 +106,7 @@ export default function Layout({ children }) {
               {isAdmin && (
                 <>
                   <div className="px-3 py-2 mt-2 text-[10px] font-black text-gray-400 uppercase tracking-wider">Gestão Administrativa</div>
-                  <SubmenuLink to="/financeiro/pagamentos" name="Boletos a Pagar" icon={ArrowDownCircle} />
+                  <SubmenuLink to="/financeiro/boletos-a-pagar" name="Boletos a Pagar" icon={ArrowDownCircle} />
                   <SubmenuLink to="/financeiro/fornecedores" name="Fornecedores" icon={Truck} />
                   <SubmenuLink to="/financeiro/prestacao-contas" name="Prestação de Contas" icon={BarChart3} />
                   <SubmenuLink to="/financeiro/balancetes" name="Balancetes" icon={FilePieChart} />
@@ -122,7 +124,6 @@ export default function Layout({ children }) {
                 onClick={() => toggleSubmenu('banco')}
                 active={location.pathname.startsWith('/banco')}
               >
-                <SubmenuLink to="/banco/extrato" name="Conciliação" icon={ClipboardList} />
                 <SubmenuLink to="/banco/pix" name="Gestão de Pix" icon={Smartphone} />
               </Submenu>
             )}
@@ -137,7 +138,8 @@ export default function Layout({ children }) {
               active={location.pathname.startsWith('/operacional')}
             >
               <SubmenuLink to="/operacional/manutencao" name="Plano de Manutenção" icon={HardHat} />
-              <SubmenuLink to="/operacional/leituras" name="Consumo Água/Gás" icon={Droplets} />
+              <SubmenuLink to="/operacional/consumo-agua" name="Consumo Água" icon={Droplets} />
+              <SubmenuLink to="/operacional/consumo-energia" name="Consumo Energia" icon={BarChart3} />
               <SubmenuLink to="/operacional/seguranca" name="Câmeras / DVR" icon={ShieldCheck} />
               <SubmenuLink to="/operacional/ocorrencias" name="Ocorrências" icon={ClipboardList} />
             </Submenu>
@@ -155,10 +157,24 @@ export default function Layout({ children }) {
             >
               <SubmenuLink to="/avisos" name="Mural de Avisos" icon={Bell} />
               <SubmenuLink to="/comunicacao/documentos" name="Pasta Digital" icon={FolderOpen} />
-              <SubmenuLink to="/comunicacao/assembleias" name="Votos e Atas" icon={Users} />
+              {/* Votos e Atas removido */}
             </Submenu>
 
             <div className="pt-4 mt-4 border-t border-gray-100">
+            {/* Administração de Condôminos */}
+            {isAdmin && (
+              <Submenu 
+                name="Condôminos" 
+                icon={Users} 
+                isOpen={menusOpen.condominos} 
+                isCollapsed={isCollapsed}
+                onClick={() => toggleSubmenu('condominos')}
+                active={location.pathname.startsWith('/condominos')}
+              >
+                <SubmenuLink to="/condominos/cadastro" name="Cadastrar Condômino" icon={User} />
+                <SubmenuLink to="/condominos/admin" name="Administração" icon={ShieldCheck} />
+              </Submenu>
+            )}
               <MenuLink to="/perfil" icon={User} name="Meu Perfil" isCollapsed={isCollapsed} />
             </div>
 

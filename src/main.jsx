@@ -1,3 +1,7 @@
+import BoletosAPagar from './pages/BoletosAPagar';
+          <Route path="/financeiro/boletos-a-pagar" element={
+            <ProtectedRoute requireAdmin><Layout><BoletosAPagar /></Layout></ProtectedRoute>
+          } />
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
@@ -20,26 +24,27 @@ import Financeiro from './pages/Financeiro';
 import Boleto from './pages/Boleto';
 import PrestacaoContas from './pages/PrestacaoContas';
 import Balancetes from './pages/Balancetes';
-import Pagamentos from './pages/Pagamentos'; // Certifique-se que o arquivo existe
+import Pagamentos from './pages/BoletosAPagar'; // Certifique-se que o arquivo existe
+
 import Fornecedores from './pages/Fornecedores'; // Certifique-se que o arquivo existe
 
 // Módulo Banco (Inter)
-import Conciliacao from './pages/Conciliacao'; // Certifique-se que o arquivo existe
-import PixGestao from './pages/PixGestao'; // Certifique-se que o arquivo existe
+import Pix from './pages/Pix';
 
 // Módulo Operacional
 import Manutencao from './pages/Manutencao';
-import Leituras from './pages/Leituras';
+import ConsumoAgua from './pages/ConsumoAgua';
 import Servicos from './pages/Servicos'; 
 import Seguranca from './pages/Seguranca';
 import Ocorrencias from './pages/Ocorrencias';
 import Consumo from './pages/Consumo';
+import ConsumoEnergia from './pages/ConsumoEnergia';
 
 // Módulo Comunicação e Reservas
 import Reservas from './pages/Reservas';
 import Avisos from './pages/Avisos';
-import Documentos from './pages/Documentos'; // Pasta Digital
-import Assembleias from './pages/Assembleias'; // Votos e Atas
+import PastaDigital from './pages/PastaDigital';
+// ...existing code...
 
 import './index.css';
 
@@ -64,8 +69,13 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <ProtectedRoute><Layout><Financeiro /></Layout></ProtectedRoute>
           } />
           
+
           <Route path="/financeiro/pagamentos" element={
             <ProtectedRoute requireAdmin><Layout><Pagamentos /></Layout></ProtectedRoute>
+          } />
+
+          <Route path="/financeiro/boletos-a-pagar" element={
+            <ProtectedRoute requireAdmin><Layout><BoletosAPagar /></Layout></ProtectedRoute>
           } />
 
           <Route path="/financeiro/fornecedores" element={
@@ -81,11 +91,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           } />
 
           {/* Módulo Gestão Bancária (Inter) */}
-          <Route path="/banco/extrato" element={
-            <ProtectedRoute requireAdmin><Layout><Conciliacao /></Layout></ProtectedRoute>
-          } />
           <Route path="/banco/pix" element={
-            <ProtectedRoute requireAdmin><Layout><PixGestao /></Layout></ProtectedRoute>
+            <ProtectedRoute requireAdmin><Layout><Pix /></Layout></ProtectedRoute>
           } />
 
           {/* Módulo Operacional */}
@@ -93,8 +100,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <ProtectedRoute><Layout><Manutencao /></Layout></ProtectedRoute>
           } />
           
-          <Route path="/operacional/leituras" element={
-            <ProtectedRoute><Layout><Leituras /></Layout></ProtectedRoute>
+          <Route path="/operacional/consumo-agua" element={
+            <ProtectedRoute><Layout><ConsumoAgua /></Layout></ProtectedRoute>
           } />
 
           <Route path="/operacional/servicos" element={
@@ -109,6 +116,10 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <ProtectedRoute><Layout><Ocorrencias /></Layout></ProtectedRoute>
           } />
 
+          <Route path="/operacional/consumo-energia" element={
+            <ProtectedRoute><Layout><ConsumoEnergia /></Layout></ProtectedRoute>
+          } />
+
           {/* Módulo Comunicação e Social */}
           <Route path="/reservas" element={
             <ProtectedRoute><Layout><Reservas /></Layout></ProtectedRoute>
@@ -117,11 +128,9 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <ProtectedRoute><Layout><Avisos /></Layout></ProtectedRoute>
           } />
           <Route path="/comunicacao/documentos" element={
-            <ProtectedRoute><Layout><Documentos /></Layout></ProtectedRoute>
+            <ProtectedRoute><Layout><PastaDigital /></Layout></ProtectedRoute>
           } />
-          <Route path="/comunicacao/assembleias" element={
-            <ProtectedRoute><Layout><Assembleias /></Layout></ProtectedRoute>
-          } />
+// ...existing code...
 
           {/* Perfil e Admin */}
           <Route path="/perfil" element={

@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { supabase, isSupabaseEnabled } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-// storage removed: all data now from Supabase only
 import { 
   Calendar as CalendarIcon, 
   Clock, 
-  Users, 
   Plus,
   CheckCircle,
   XCircle,
-  Search
+  Search,
+  Trash2,
+  Loader2,
+  Users
 } from 'lucide-react';
 import { format, parseISO, addMonths, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, isPast, isToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -21,241 +22,288 @@ export default function Reservas() {
   const [showModal, setShowModal] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isFetching, setIsFetching] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   
   const [formData, setFormData] = useState({
     date: '',
-    startTime: '14:00',
-    endTime: '18:00',
+    start_time: '14:00',
+    end_time: '18:00',
     event: '',
-    guests: ''
+    guests: '', // Será tratado como número no envio
+    residentName: '' 
   });
 
-  // --- BUSCA DIRETA NO BANCO (SEM REALTIME/WEBSOCKET) ---
   useEffect(() => {
-    if (!isSupabaseEnabled() || !user) return;
-
-    const fetchBookings = async () => {
-      setIsFetching(true);
-      try {
-        const { data, error } = await supabase
-          .from('bookings')
-          .select('*')
-          .order('date', { ascending: true });
-        
-        if (!error && data) {
-          setBookings(data);
-          // storage removed: bookings state only from Supabase
-        }
-      } catch (err) {
-        console.error("Erro ao buscar reservas no Supabase:", err);
-      } finally {
-        setIsFetching(false);
-      }
-    };
-
-    fetchBookings();
-    // Realtime removido para evitar erros de WSS no Easypanel
+    if (user) {
+      setFormData(prev => ({ ...prev, residentName: user.name || '' }));
+    }
   }, [user]);
 
-  // --- PROTEÇÃO DE CARREGAMENTO ---
+  useEffect(() => {
+    if (!isSupabaseEnabled() || !user) return;
+    fetchBookings();
+  }, [user]);
+
+  const fetchBookings = async () => {
+    setIsFetching(true);
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('*')
+        .order('date', { ascending: true });
+      
+      if (error) throw error;
+      setBookings(data || []);
+    } catch (err) {
+      console.error("Erro ao buscar reservas:", err);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
   if (loading || !user) {
     return (
       <div className="flex flex-col items-center justify-center h-64 space-y-4">
-        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
-        <p className="text-gray-500 font-medium">Sincronizando calendário de reservas...</p>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+        <p className="text-gray-500 font-black text-[10px] tracking-widest uppercase">Sincronizando Sistema...</p>
       </div>
     );
   }
 
-  // Filtragem segura (suporta userId local ou user_id do banco)
-  const userBookings = isAdmin ? bookings : bookings.filter(b => (b.userId === user.id || b.user_id === user.id));
+  const userBookings = isAdmin ? bookings : bookings.filter(b => b.user_id === user.id);
   
   const filteredBookings = userBookings.filter(booking => 
-    booking.event?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    booking.userName?.toLowerCase().includes(searchTerm.toLowerCase())
+    (booking.event || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (booking.user_name || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  // Lógica do Calendário
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
-  const daysInMonth = eachDayOfInterval({ start: monthStart, end: monthEnd });
 
   const getBookingsForDate = (date) => {
     return bookings.filter(booking => 
-      isSameDay(parseISO(booking.date), date) && (booking.status === 'approved' || booking.status === 'confirmed')
+      booking.date && isSameDay(parseISO(booking.date), date) && 
+      (booking.status === 'approved' || booking.status === 'confirmed')
     );
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true);
     
+    // CORREÇÃO: Garante que 'guests' seja um número inteiro para o banco
+    const guestsValue = formData.guests ? parseInt(formData.guests, 10) : 0;
+
     const newBookingData = {
       user_id: user.id,
-      userName: user.name,
+      user_name: isAdmin ? (formData.residentName || "").toUpperCase() : (user.name || "").toUpperCase(),
       unit: user.unit || '',
-      event: formData.event,
+      event: (formData.event || "").toUpperCase(),
       date: formData.date,
-      startTime: formData.startTime,
-      endTime: formData.endTime,
-      guests: formData.guests,
+      start_time: formData.start_time,
+      end_time: formData.end_time,
+      guests: guestsValue, 
       status: isAdmin ? 'approved' : 'pending',
       created_at: new Date().toISOString()
     };
 
-    if (isSupabaseEnabled()) {
+    try {
       const { data, error } = await supabase.from('bookings').insert([newBookingData]).select();
-      if (!error && data) {
-        const updated = [...bookings, data[0]];
-        setBookings(updated);
-      }
-    } else {
-      const updated = [...bookings, { id: Date.now().toString(), ...newBookingData }];
-      setBookings(updated);
-    }
-    
-    setShowModal(false);
-    setFormData({ date: '', startTime: '14:00', endTime: '18:00', event: '', guests: '' });
-  };
+      
+      if (error) throw error;
 
-  const updateStatus = async (id, status) => {
-    if (isSupabaseEnabled()) {
-      await supabase.from('bookings').update({ status }).eq('id', id);
+      if (data) {
+        setBookings(prev => [...prev, data[0]]);
+        setShowModal(false);
+        setFormData({ 
+          date: '', 
+          start_time: '14:00', 
+          end_time: '18:00', 
+          event: '', 
+          guests: '', 
+          residentName: user.name || '' 
+        });
+      }
+    } catch (err) {
+      alert(`Erro no Banco: ${err.message}`);
+    } finally {
+      setIsSubmitting(false);
     }
-    const updated = bookings.map(b => b.id === id ? { ...b, status } : b);
-    setBookings(updated);
-    // storage removed: bookings state only from Supabase
   };
 
   const handleDelete = async (bookingId) => {
-    if (confirm('Deseja realmente excluir esta reserva?')) {
-        if (isSupabaseEnabled()) {
-          await supabase.from('bookings').delete().eq('id', bookingId);
-        }
-        const updated = bookings.filter(b => b.id !== bookingId);
-        setBookings(updated);
+    if (!window.confirm('Deseja excluir permanentemente este agendamento?')) return;
+    try {
+      const { error } = await supabase.from('bookings').delete().eq('id', bookingId);
+      if (error) throw error;
+      setBookings(prev => prev.filter(b => b.id !== bookingId));
+    } catch (err) {
+      alert(`Erro ao excluir: ${err.message}`);
     }
   };
 
   const getStatusConfig = (status) => {
     const configs = {
-      approved: { icon: CheckCircle, text: 'Aprovado', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-200' },
-      pending: { icon: Clock, text: 'Pendente', color: 'text-yellow-600', bgColor: 'bg-yellow-50', borderColor: 'border-yellow-200' },
-      rejected: { icon: XCircle, text: 'Rejeitado', color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-200' }
+      approved: { icon: CheckCircle, text: 'Aprovado', color: 'text-green-600', bgColor: 'bg-green-50' },
+      pending: { icon: Clock, text: 'Pendente', color: 'text-amber-600', bgColor: 'bg-amber-50' },
+      rejected: { icon: XCircle, text: 'Rejeitado', color: 'text-red-600', bgColor: 'bg-red-50' }
     };
     return configs[status] || configs.pending;
   };
 
   return (
-    <div className="space-y-6">
+    <div className="p-4 space-y-6 font-sans uppercase tracking-tighter">
+      {/* HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reservas do Salão</h1>
-          <p className="mt-2 text-gray-600">Agende o salão de festas do condomínio Onix</p>
+          <h1 className="text-2xl font-black text-slate-900">RESERVAS DO SALÃO</h1>
+          <p className="text-[10px] font-bold text-slate-400 tracking-widest uppercase">Condomínio Onix</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2 self-start sm:self-auto">
-          <Plus className="w-5 h-5" /> Nova Reserva
+        <button 
+          onClick={() => setShowModal(true)} 
+          className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-[1.5rem] font-black text-xs flex items-center gap-2 transition-all shadow-xl shadow-indigo-100"
+        >
+          <Plus size={18} /> NOVA SOLICITAÇÃO
         </button>
       </div>
 
-      {/* Calendário */}
-      <div className="card shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-900 capitalize">
+      {/* CALENDÁRIO PREMIUM */}
+      <div className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between mb-8">
+          <h2 className="text-sm font-black text-slate-800 capitalize">
             {format(currentMonth, 'MMMM yyyy', { locale: ptBR })}
           </h2>
           <div className="flex gap-2">
-            <button onClick={() => setCurrentMonth(addMonths(currentMonth, -1))} className="btn-secondary py-1 px-3 text-xs">Anterior</button>
-            <button onClick={() => setCurrentMonth(new Date())} className="btn-secondary py-1 px-3 text-xs">Hoje</button>
-            <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="btn-secondary py-1 px-3 text-xs">Próximo</button>
+            <button onClick={() => setCurrentMonth(addMonths(currentMonth, -1))} className="px-4 py-2 bg-slate-50 text-[10px] font-black rounded-xl hover:bg-slate-100 uppercase transition-colors">Anterior</button>
+            <button onClick={() => setCurrentMonth(new Date())} className="px-4 py-2 bg-slate-100 text-[10px] font-black rounded-xl uppercase">Hoje</button>
+            <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="px-4 py-2 bg-slate-50 text-[10px] font-black rounded-xl hover:bg-slate-100 uppercase transition-colors">Próximo</button>
           </div>
         </div>
 
-        <div className="grid grid-cols-7 gap-2">
+        <div className="grid grid-cols-7 gap-2 sm:gap-4">
           {['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'].map(day => (
-            <div key={day} className="text-center text-xs font-bold text-gray-400 py-2 uppercase tracking-wider">{day}</div>
+            <div key={day} className="text-center text-[9px] font-black text-slate-300 pb-2 uppercase tracking-[0.2em]">{day}</div>
           ))}
-          {daysInMonth.map((day, index) => {
+          {eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) }).map((day, i) => {
             const dayBookings = getBookingsForDate(day);
-            const hasBooking = dayBookings.length > 0;
             const isPastDay = isPast(day) && !isToday(day);
-
             return (
               <div
-                key={index}
-                className={`min-h-[80px] p-2 border rounded-lg transition-all ${!isSameMonth(day, currentMonth) ? 'bg-gray-50 text-gray-300' : 'bg-white'} ${isToday(day) ? 'ring-2 ring-primary-500' : 'border-gray-100'} ${hasBooking ? 'bg-green-50/50 border-green-200' : ''} ${isPastDay ? 'opacity-40' : 'hover:border-primary-300 cursor-pointer'}`}
-                onClick={() => !isPastDay && (setFormData({...formData, date: format(day, 'yyyy-MM-dd')}), setShowModal(true))}
+                key={i}
+                onClick={() => !isPastDay && (setFormData(prev => ({...prev, date: format(day, 'yyyy-MM-dd')})), setShowModal(true))}
+                className={`min-h-[70px] sm:min-h-[90px] p-2 border rounded-[1.5rem] transition-all relative ${!isSameMonth(day, currentMonth) ? 'opacity-20' : 'bg-white'} ${isToday(day) ? 'border-indigo-500 bg-indigo-50/20 shadow-inner' : 'border-slate-50'} ${dayBookings.length > 0 ? 'bg-green-50 border-green-200' : 'hover:bg-slate-50 cursor-pointer'}`}
               >
-                <div className="text-sm font-semibold">{format(day, 'd')}</div>
-                {hasBooking && <div className="mt-1 text-[10px] text-green-700 font-bold leading-tight">{dayBookings[0].event}</div>}
+                <span className={`text-[10px] font-black ${isToday(day) ? 'text-indigo-600' : 'text-slate-400'}`}>{format(day, 'd')}</span>
+                {dayBookings.length > 0 && (
+                  <div className="mt-1 text-[7px] font-black text-green-700 leading-tight truncate uppercase">
+                    {dayBookings[0].event}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Lista de Reservas */}
-      <div className="card shadow-sm">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">{isAdmin ? 'Todas as Reservas' : 'Minhas Reservas'}</h2>
-          {isFetching && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>}
-        </div>
-
-        <div className="space-y-4">
-          {filteredBookings.length === 0 ? (
-            <div className="text-center py-12 text-gray-400">Nenhuma reserva agendada.</div>
-          ) : (
-            filteredBookings
-              .sort((a, b) => new Date(b.created_at || b.createdAt) - new Date(a.created_at || a.createdAt))
-              .map((booking) => {
-                const statusConfig = getStatusConfig(booking.status);
-                const StatusIcon = statusConfig.icon;
-                return (
-                  <div key={booking.id} className={`p-4 border-2 rounded-lg ${statusConfig.borderColor} hover:shadow-md transition-shadow`}>
-                    <div className="flex flex-col sm:flex-row justify-between gap-4">
-                      <div className="flex gap-3">
-                        <div className={`p-2 rounded-lg h-fit ${statusConfig.bgColor}`}><StatusIcon className={`w-5 h-5 ${statusConfig.color}`} /></div>
-                        <div>
-                          <h3 className="font-bold text-gray-900">{booking.event}</h3>
-                          <div className="mt-1 space-y-0.5 text-xs text-gray-500">
-                            <p className="flex items-center gap-2"><CalendarIcon className="w-3 h-3" /> {format(parseISO(booking.date), "dd/MM/yyyy")}</p>
-                            <p className="flex items-center gap-2"><Clock className="w-3 h-3" /> {booking.startTime} - {booking.endTime}</p>
-                            {isAdmin && <p className="text-primary-600 font-bold uppercase tracking-tighter">{booking.userName} • Unidade {booking.unit}</p>}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2 sm:items-end">
-                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase rounded-full border ${statusConfig.bgColor} ${statusConfig.color} ${statusConfig.borderColor}`}>{statusConfig.text}</span>
-                        {isAdmin && booking.status === 'pending' && (
-                          <div className="flex gap-1">
-                            <button onClick={() => updateStatus(booking.id, 'approved')} className="bg-green-600 text-white px-2 py-1 rounded text-[10px] font-bold">APROVAR</button>
-                            <button onClick={() => updateStatus(booking.id, 'rejected')} className="bg-red-600 text-white px-2 py-1 rounded text-[10px] font-bold">REJEITAR</button>
-                          </div>
-                        )}
-                        <button onClick={() => handleDelete(booking.id)} className="text-[10px] text-gray-400 hover:text-red-600 font-bold uppercase">Excluir</button>
-                      </div>
+      {/* GRID DE CARDS CORRIGIDO */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        {filteredBookings.length === 0 ? (
+          <div className="col-span-full text-center py-20 text-slate-300 font-black text-[10px] tracking-[0.4em] uppercase">Nenhum Registro no Período</div>
+        ) : (
+          filteredBookings.map((booking) => {
+            const config = getStatusConfig(booking.status);
+            return (
+              <div key={booking.id} className="bg-white p-5 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-4 hover:shadow-xl transition-all group">
+                <div className={`w-14 h-14 shrink-0 rounded-[1.25rem] flex items-center justify-center shadow-inner ${config.bgColor} ${config.color}`}>
+                  <config.icon size={26} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start">
+                    <div className="truncate">
+                      <h3 className="text-xs font-black text-slate-800 uppercase truncate pr-2">{booking.event}</h3>
+                      <p className="text-[9px] font-bold text-indigo-600 mt-1 truncate uppercase">
+                        {booking.user_name || "MORADOR"} • UNID {booking.unit || "--"}
+                      </p>
                     </div>
+                    <button onClick={() => handleDelete(booking.id)} className="text-slate-100 group-hover:text-red-500 transition-colors p-1"><Trash2 size={18} /></button>
                   </div>
-                );
-              })
-          )}
-        </div>
+                  <div className="flex items-center gap-3 mt-3 text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                    <span className="flex items-center gap-1 shrink-0 bg-slate-50 px-2 py-1 rounded-lg"><CalendarIcon size={12} /> {booking.date ? format(parseISO(booking.date), "dd/MM/yyyy") : "--"}</span>
+                    <span className="flex items-center gap-1 shrink-0 bg-slate-50 px-2 py-1 rounded-lg"><Clock size={12} /> {booking.start_time} - {booking.end_time}</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
-      {/* Modal */}
+      {/* MODAL RESPONSIVO */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-xl p-6 max-w-md w-full shadow-2xl">
-            <h3 className="text-xl font-bold mb-4">Nova Solicitação</h3>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input type="date" value={formData.date} onChange={e => setFormData({...formData, date: e.target.value})} className="input-field" required min={format(new Date(), 'yyyy-MM-dd')} />
-              <div className="grid grid-cols-2 gap-2">
-                <input type="time" value={formData.startTime} onChange={e => setFormData({...formData, startTime: e.target.value})} className="input-field" required />
-                <input type="time" value={formData.endTime} onChange={e => setFormData({...formData, endTime: e.target.value})} className="input-field" required />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-[3.5rem] p-10 max-w-md w-full shadow-2xl animate-in zoom-in duration-300 border border-slate-100">
+            <h3 className="text-xl font-black mb-8 text-slate-800 text-center uppercase tracking-tighter">Dados da Reserva</h3>
+            <form onSubmit={handleSubmit} className="space-y-5">
+              
+              <div>
+                <label className="text-[10px] font-black text-slate-400 ml-3 mb-1 block uppercase tracking-widest">Responsável</label>
+                <input 
+                  type="text" 
+                  value={formData.residentName} 
+                  onChange={e => setFormData(prev => ({...prev, residentName: e.target.value}))} 
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold uppercase text-xs focus:ring-2 focus:ring-indigo-500" 
+                  required 
+                  readOnly={!isAdmin} 
+                />
               </div>
-              <input type="text" value={formData.event} onChange={e => setFormData({...formData, event: e.target.value})} className="input-field" placeholder="Nome do Evento" required />
-              <input type="number" value={formData.guests} onChange={e => setFormData({...formData, guests: e.target.value})} className="input-field" placeholder="Total de Convidados" min="1" required />
-              <button type="submit" className="w-full btn-primary py-3 font-bold">ENVIAR SOLICITAÇÃO</button>
-              <button type="button" onClick={() => setShowModal(false)} className="w-full text-xs text-gray-400 font-bold uppercase mt-2">Cancelar</button>
+
+              <div>
+                <label className="text-[10px] font-black text-slate-400 ml-3 mb-1 block uppercase tracking-widest">Data do Evento</label>
+                <input 
+                  type="date" 
+                  value={formData.date} 
+                  onChange={e => setFormData(prev => ({...prev, date: e.target.value}))} 
+                  className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-xs focus:ring-2 focus:ring-indigo-500" 
+                  required 
+                  min={format(new Date(), 'yyyy-MM-dd')} 
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 ml-3 mb-1 block uppercase tracking-widest">Horário Início</label>
+                  <input type="time" value={formData.start_time} onChange={e => setFormData(prev => ({...prev, start_time: e.target.value}))} className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-xs" required />
+                </div>
+                <div>
+                  <label className="text-[10px] font-black text-slate-400 ml-3 mb-1 block uppercase tracking-widest">Horário Fim</label>
+                  <input type="time" value={formData.end_time} onChange={e => setFormData(prev => ({...prev, end_time: e.target.value}))} className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-xs" required />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-1">
+                  <label className="text-[10px] font-black text-slate-400 ml-3 mb-1 block uppercase tracking-widest">Convidados</label>
+                  <input 
+                    type="number" 
+                    value={formData.guests} 
+                    onChange={e => setFormData(prev => ({...prev, guests: e.target.value}))} 
+                    className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold text-xs" 
+                    placeholder="0"
+                    min="0"
+                  />
+                </div>
+                <div className="col-span-1">
+                   <label className="text-[10px] font-black text-slate-400 ml-3 mb-1 block uppercase tracking-widest">Tipo</label>
+                   <input type="text" value={formData.event} onChange={e => setFormData(prev => ({...prev, event: e.target.value}))} className="w-full p-4 bg-slate-50 border-none rounded-2xl font-bold uppercase text-xs" placeholder="EX: FESTA" required />
+                </div>
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full py-6 bg-indigo-600 text-white rounded-[2rem] font-black text-xs tracking-[0.2em] hover:bg-indigo-700 disabled:opacity-50 flex items-center justify-center gap-3 shadow-xl shadow-indigo-100 transition-all mt-4"
+              >
+                {isSubmitting ? <Loader2 className="animate-spin" size={20} /> : "RESERVAR AGORA"}
+              </button>
+              
+              <button type="button" onClick={() => setShowModal(false)} className="w-full text-[10px] text-slate-300 font-black uppercase tracking-widest hover:text-slate-500 transition-colors">Voltar para o calendário</button>
             </form>
           </div>
         </div>
