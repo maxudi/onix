@@ -24,7 +24,7 @@ const months = [
   { v: '10', l: 'Outubro' }, { v: '11', l: 'Novembro' }, { v: '12', l: 'Dezembro' }
 ];
 
-export default function DemaisGastos() {
+export default function DemaisGastos({ embedMode }) {
   const { user } = useAuth();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState('');
@@ -94,6 +94,35 @@ export default function DemaisGastos() {
     ]
   };
 
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      datalabels: {
+        anchor: 'end',
+        align: 'top',
+        color: '#475569',
+        font: { weight: 'bold', size: 10 },
+        formatter: value => value > 0 ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) : '',
+      }
+    },
+    scales: { 
+      y: { beginAtZero: true, grid: { display: false }, ticks: { display: false } },
+      x: { grid: { display: false } }
+    }
+  };
+
+  if (embedMode) {
+    return (
+      <div className="h-64 md:h-80 w-full">
+        <Bar
+          data={chartData}
+          options={chartOptions}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 bg-slate-50/50 min-h-screen font-sans">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -117,23 +146,7 @@ export default function DemaisGastos() {
       <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-8">
         <Bar
           data={chartData}
-          options={{
-            responsive: true,
-            plugins: {
-              legend: { display: false },
-              datalabels: {
-                anchor: 'end',
-                align: 'top',
-                color: '#475569',
-                font: { weight: 'bold', size: 10 },
-                formatter: value => value > 0 ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) : '',
-              }
-            },
-            scales: { 
-              y: { beginAtZero: true, grid: { display: false }, ticks: { display: false } },
-              x: { grid: { display: false } }
-            }
-          }}
+          options={chartOptions}
         />
       </div>
 

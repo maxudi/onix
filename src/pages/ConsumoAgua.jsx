@@ -31,7 +31,7 @@ const months = [
   { v: '10', l: 'Outubro' }, { v: '11', l: 'Novembro' }, { v: '12', l: 'Dezembro' }
 ];
 
-export default function ConsumoAgua() {
+export default function ConsumoAgua({ embedMode }) {
   const { user } = useAuth();
   const chartRef = useRef(null); // Referência para controle do canvas
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
@@ -109,6 +109,17 @@ export default function ConsumoAgua() {
       } 
     }
   };
+
+  if (embedMode) {
+    return (
+      <div className="h-64 md:h-80 w-full">
+        <Bar
+          data={chartData}
+          options={chartOptions}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 bg-gray-50/50 min-h-screen font-sans">

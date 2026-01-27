@@ -24,7 +24,7 @@ const months = [
   { v: '10', l: 'Outubro' }, { v: '11', l: 'Novembro' }, { v: '12', l: 'Dezembro' }
 ];
 
-export default function ConsumoEnergia() {
+export default function ConsumoEnergia({ embedMode }) {
   const { user } = useAuth();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState('');
@@ -85,6 +85,34 @@ export default function ConsumoEnergia() {
     ]
   };
 
+  const chartOptions = {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      title: { display: false },
+      datalabels: {
+        anchor: 'end',
+        align: 'start',
+        color: '#b45309',
+        font: { weight: 'bold', size: 12 },
+        formatter: value => value ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '',
+        clamp: true
+      }
+    },
+    scales: { y: { beginAtZero: true } }
+  };
+
+  if (embedMode) {
+    return (
+      <div className="h-64 md:h-80 w-full">
+        <Bar
+          data={chartData}
+          options={chartOptions}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6 bg-gray-50/50 min-h-screen font-sans">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -102,22 +130,7 @@ export default function ConsumoEnergia() {
       <div className="bg-white rounded-2xl border border-yellow-100 shadow-sm p-6">
         <Bar
           data={chartData}
-          options={{
-            responsive: true,
-            plugins: {
-              legend: { display: false },
-              title: { display: false },
-              datalabels: {
-                anchor: 'end',
-                align: 'start',
-                color: '#b45309',
-                font: { weight: 'bold', size: 12 },
-                formatter: value => value ? value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '',
-                clamp: true
-              }
-            },
-            scales: { y: { beginAtZero: true } }
-          }}
+          options={chartOptions}
           plugins={[ChartDataLabels]}
         />
       </div>
