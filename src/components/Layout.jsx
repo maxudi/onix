@@ -140,6 +140,7 @@ export default function Layout({ children }) {
               <SubmenuLink to="/operacional/manutencao" name="Plano de Manutenção" icon={HardHat} />
               <SubmenuLink to="/operacional/consumo-agua" name="Consumo Água" icon={Droplets} />
               <SubmenuLink to="/operacional/consumo-energia" name="Consumo Energia" icon={BarChart3} />
+              <SubmenuLink to="/operacional/demais-gastos" name="Demais Gastos" icon={FilePieChart} />
               <SubmenuLink to="/operacional/seguranca" name="Câmeras / DVR" icon={ShieldCheck} />
               <SubmenuLink to="/operacional/ocorrencias" name="Ocorrências" icon={ClipboardList} />
             </Submenu>

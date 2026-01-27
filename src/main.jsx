@@ -39,6 +39,7 @@ import Seguranca from './pages/Seguranca';
 import Ocorrencias from './pages/Ocorrencias';
 import Consumo from './pages/Consumo';
 import ConsumoEnergia from './pages/ConsumoEnergia';
+import DemaisGastos from './pages/DemaisGastos';
 
 // Módulo Comunicação e Reservas
 import Reservas from './pages/Reservas';
@@ -116,8 +117,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
             <ProtectedRoute><Layout><Ocorrencias /></Layout></ProtectedRoute>
           } />
 
+
           <Route path="/operacional/consumo-energia" element={
             <ProtectedRoute><Layout><ConsumoEnergia /></Layout></ProtectedRoute>
+          } />
+          <Route path="/operacional/demais-gastos" element={
+            <ProtectedRoute><Layout><DemaisGastos /></Layout></ProtectedRoute>
           } />
 
           {/* Módulo Comunicação e Social */}
