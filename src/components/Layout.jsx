@@ -5,7 +5,9 @@ import {
   LogOut, Building2, ChevronDown, ChevronRight, FileText,
   Wrench, Truck, ShieldCheck, ClipboardList, ArrowDownCircle,
   Bell, Menu, X, ChevronLeft, BarChart3,
-  FilePieChart, FolderOpen, Droplets, HardHat
+  FilePieChart, FolderOpen, Droplets, HardHat,
+  PlugZap,
+  PlugZap2
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -128,6 +130,10 @@ export default function Layout({ children }) {
                 <>
                   <SubmenuLink to="/financeiro/boletos" name="Painel Financeiro" icon={BarChart3} />
                   <SubmenuLink to="/financeiro/gerar-boletos" name="Gerar Boletos" icon={DollarSign} />
+                  <SubmenuLink to="/financeiro/boletos-a-pagar" name="Cadatrar Pagamentos" icon={ArrowDownCircle} />
+                  <SubmenuLink to="/financeiro/prestacao-contas" name="Prestação de Contas" icon={FilePieChart} />
+                  <SubmenuLink to="/financeiro/balancete-mensal" name="Balancete Mensal" icon={ClipboardList} />
+   
                 </>
               )}
             </Submenu>
@@ -142,10 +148,14 @@ export default function Layout({ children }) {
             >
               <SubmenuLink to="/operacional/manutencao" name="Manutenção" icon={HardHat} />
               <SubmenuLink to="/operacional/consumo-agua" name="Consumo Água" icon={Droplets} />
-              <SubmenuLink to="/operacional/consumo-energia" name="Consumo Energia" icon={BarChart3} />
+              <SubmenuLink to="/operacional/consumo-energia" name="Consumo Energia" icon={PlugZap2} />
+              <SubmenuLink to="/operacional/demais-gastos" name="Demais Gastos" icon={DollarSign} />
+              <SubmenuLink to="/operacional/seguranca" name="Câmeras / DVR" icon={ShieldCheck} />
+              <SubmenuLink to="/operacional/servicos" name="Serviços" icon={Truck} />
+              <SubmenuLink to="/operacional/ocorrencias" name="Ocorrências" icon={ClipboardList} />
             </Submenu>
 
-            <MenuLink to="/reservas" icon={Calendar} name="Reservas" isCollapsed={isCollapsed} />
+            <MenuLink to="/reservas" icon={Calendar} name="Reservas Salão" isCollapsed={isCollapsed} />
 
             <Submenu
               name="Comunicação"

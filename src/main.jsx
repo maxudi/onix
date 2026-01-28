@@ -75,7 +75,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/financeiro/boletos" element={
             <ProtectedRoute requireAdmin><Layout><Financeiro /></Layout></ProtectedRoute>
           } />
-          <Route path="/financeiro/balancetes" element={
+          <Route path="/financeiro/balancete-mensal" element={
             <ProtectedRoute requireAdmin><Layout><Balancetes /></Layout></ProtectedRoute>
           } />
 
@@ -122,7 +122,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
           <Route path="/condominos/cadastro" element={
             <ProtectedRoute requireAdmin><Layout><CadastroCondomino /></Layout></ProtectedRoute>
           } />
-          <Route path="/admin" element={
+          <Route path="/condominos/admin" element={
             <ProtectedRoute requireAdmin><Layout><Admin /></Layout></ProtectedRoute>
           } />
           <Route path="/perfil" element={
