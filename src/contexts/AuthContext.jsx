@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import { supabaseAdapter, storage } from '../services/storage';
+import { supabase } from '../lib/supabase';
+import { supabaseAdapter } from '../services/storage';
 
 const AuthContext = createContext(null);
 
@@ -14,26 +15,34 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // LOGS DE DEPURAÇÃO PARA O EASYPANEL
-  useEffect(() => {
-    console.log('--- ONIX DEBUG ---');
-    console.log('VITE_SUPABASE_URL:', import.meta.env.VITE_SUPABASE_URL || '❌ NÃO ENCONTRADA');
-    console.log('VITE_SUPABASE_ANON_KEY:', import.meta.env.VITE_SUPABASE_ANON_KEY ? '✅ DEFINIDA' : '❌ NÃO ENCONTRADA');
-    console.log('------------------');
-  }, []);
+  const [forcePasswordChange, setForcePasswordChange] = useState(false);
 
   useEffect(() => {
     const checkUser = async () => {
       try {
-        // Tenta buscar o usuário, mas previne falha se o adapter estiver quebrado
+        // Tenta buscar via adapter primeiro
         const response = await supabaseAdapter.getCurrentUser();
-        if (response && response.user) {
+        
+        if (response?.user) {
           setUser(response.user);
+        } else {
+          // Fallback: Se o adapter falhar, pergunta direto ao Supabase Auth
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.user) {
+            // Busca o perfil para ter o role de sindico/morador
+            const { data: profile } = await supabase
+              .from('perfis')
+              .select('*')
+              .eq('id', session.user.id)
+              .single();
+            
+            setUser({ ...session.user, role: profile?.tipo_usuario });
+          }
         }
       } catch (err) {
         console.error("Erro ao verificar sessão inicial:", err);
       } finally {
+        // Isso garante que a tela branca saia sempre
         setLoading(false);
       }
     };
@@ -43,24 +52,17 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const { user, error } = await supabaseAdapter.login(email, password);
+    if (error) throw new Error(error.message);
+
+    // Lógica de senha padrão
+    const senhasPadrao = ['Onix2026', 'admin123', '123456'];
+    const precisaTrocarSenha = senhasPadrao.includes(password);
     
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    setUser(user);
-    return user;
-  };
-
-  const register = async (userData) => {
-    const { user, error } = await supabaseAdapter.register(userData);
+    setForcePasswordChange(precisaTrocarSenha);
     
-    if (error) {
-      throw new Error(error.message);
-    }
-
-    setUser(user);
-    return user;
+    const userWithRole = { ...user, precisaTrocarSenha };
+    setUser(userWithRole);
+    return userWithRole;
   };
 
   const logout = async () => {
@@ -68,52 +70,39 @@ export const AuthProvider = ({ children }) => {
       await supabaseAdapter.logout();
     } finally {
       setUser(null);
+      setForcePasswordChange(false);
     }
   };
 
   const updateUser = (updatedData) => {
-    // PROTEÇÃO: Impede o erro de tela branca se 'user' for null
-    if (!user) {
-      console.warn("Tentativa de atualizar usuário nulo abortada.");
-      return;
-    }
-    const updatedUser = { ...user, ...updatedData };
-    setUser(updatedUser);
-    // Sincroniza com o localStorage/storage local se existir
-    if (storage) {
-      storage.setCurrentUser(updatedUser);
-      const users = storage.getUsers();
-      if (Array.isArray(users)) {
-        const userIndex = users.findIndex(u => u.id === updatedUser.id);
-        if (userIndex !== -1) {
-          users[userIndex] = { ...users[userIndex], ...updatedData };
-          storage.setUsers(users);
-        }
-      }
-    }
+    if (!user) return;
+    setUser(prev => ({ ...prev, ...updatedData }));
   };
+
   const value = {
     user,
     loading,
     login,
-    register,
     logout,
     updateUser,
-    isAdmin: user?.role === 'admin'
+    // AJUSTADO: Agora reconhece 'sindico' como administrador
+    isAdmin: user?.role === 'sindico' || user?.role === 'admin',
+    forcePasswordChange,
+    setForcePasswordChange
   };
 
-  // Enquanto estiver carregando a sessão inicial, mostramos um loading simples
-  // Isso evita que componentes filhos tentem ler o estado 'user' antes de ser definido.
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 font-medium">Carregando sistema Onix...</p>
+  return (
+    <AuthContext.Provider value={value}>
+      {loading ? (
+        <div className="min-h-screen flex items-center justify-center bg-gray-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600 mx-auto"></div>
+            <p className="mt-4 text-gray-600 font-medium italic">ONIX: Autenticando...</p>
+          </div>
         </div>
-      </div>
-    );
-  }
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+      ) : (
+        children
+      )}
+    </AuthContext.Provider>
+  );
 };

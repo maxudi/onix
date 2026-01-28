@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Building2, Mail, Lock, AlertCircle } from 'lucide-react';
+import { Building2, Mail, Lock, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Login() {
@@ -11,7 +11,6 @@ export default function Login() {
   const { login, user } = useAuth();
   const navigate = useNavigate();
 
-  // Proteção: se o usuário já estiver logado, redireciona automaticamente
   useEffect(() => {
     if (user) {
       navigate('/dashboard');
@@ -24,115 +23,81 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Realiza o login via Supabase Auth (HTTP POST)
-      const sessionUser = await login(email, password);
-      if (sessionUser) {
-        navigate('/dashboard');
-      }
+      // Agora chama o login que configuramos no adapter (via Supabase Auth)
+      await login(email, password);
+      navigate('/dashboard');
     } catch (err) {
-      // Captura erros de credenciais ou rede
-      setError(err.message || 'Falha ao realizar login. Verifique suas credenciais.');
+      setError('E-mail ou senha incorretos. Verifique suas credenciais oficiais.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-primary-50 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 font-sans">
       <div className="max-w-md w-full">
-        {/* Logo e Título */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-2xl mb-4 shadow-lg">
-            <Building2 className="w-10 h-10 text-white" />
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-primary-600 rounded-3xl mb-4 shadow-xl shadow-primary-100">
+            <Building2 className="w-12 h-12 text-white" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Onix</h1>
-          <p className="text-gray-600">Sistema de Gestão de Condomínio</p>
+          <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase italic">Onix</h1>
+          <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-2">Gestão de Condomínio</p>
         </div>
 
-        {/* Card de Login */}
-        <div className="card shadow-xl border-t-4 border-primary-600">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Entrar</h2>
+        <div className="bg-white p-8 rounded-[2.5rem] shadow-sm border border-slate-100">
+          <h2 className="text-xl font-black text-slate-800 mb-8 uppercase italic">Acessar Sistema</h2>
 
           {error && (
-            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-red-800">{error}</p>
+            <div className="mb-6 p-4 bg-red-50 border border-red-100 rounded-2xl flex items-center gap-3 text-red-700 animate-in fade-in zoom-in duration-200">
+              <AlertCircle size={18} className="flex-shrink-0" />
+              <p className="text-xs font-black uppercase tracking-tight">{error}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email
-              </label>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">E-mail Cadastrado</label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="input-field pl-11"
-                  placeholder="seu@email.com"
+                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-primary-500 font-bold text-slate-700 transition-all"
+                  placeholder="exemplo@onix.com"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Senha
-              </label>
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2 ml-1">Senha de Acesso</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="input-field pl-11"
+                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border-none rounded-2xl outline-none focus:ring-2 focus:ring-primary-500 font-bold text-slate-700 transition-all"
                   placeholder="••••••••"
                   required
                 />
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="rounded border-gray-300 text-primary-600 focus:ring-primary-500" />
-                <span className="text-gray-600">Lembrar-me</span>
-              </label>
-              <a href="#" className="text-primary-600 hover:text-primary-700 font-medium">
-                Esqueceu a senha?
-              </a>
-            </div>
-
             <button
               type="submit"
               disabled={loading}
-              className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed h-11 flex items-center justify-center"
+              className="w-full bg-slate-900 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-[0.2em] hover:bg-primary-600 transition-all shadow-lg active:scale-95 disabled:opacity-50 flex items-center justify-center gap-3"
             >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Entrando...
-                </>
-              ) : 'Entrar'}
+              {loading ? <Loader2 className="animate-spin" size={18} /> : 'Entrar no Sistema'}
             </button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-gray-600">
-            Não tem uma conta?{' '}
-            <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
-              Cadastre-se
-            </Link>
-          </div>
-
-          {/* Credenciais de teste */}
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
-            <p className="text-xs font-medium text-gray-700 mb-2 uppercase tracking-wider">Acesso Rápido:</p>
-            <div className="space-y-1 text-xs text-gray-600">
-              <p><span className="font-semibold">Admin:</span> admin@onix.com / admin123</p>
-              <p><span className="font-semibold">Morador:</span> joao@email.com / 123456</p>
-            </div>
+          <div className="mt-8 pt-6 border-t border-slate-50 text-center">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              Esqueceu sua senha? <Link to="/reset" className="text-primary-600 hover:underline">Clique aqui</Link>
+            </p>
           </div>
         </div>
       </div>
