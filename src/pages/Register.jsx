@@ -7,8 +7,6 @@ export default function Register() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    password: '',
-    confirmPassword: '',
     phone: '',
     cpf: '',
     unit: ''
@@ -27,26 +25,24 @@ export default function Register() {
     e.preventDefault();
     setError('');
 
-    // Validações Básicas
-    if (formData.password !== formData.confirmPassword) {
-      setError('As senhas não coincidem');
+    // Validação básica de CPF e e-mail
+    if (!formData.cpf || formData.cpf.replace(/\D/g, '').length !== 11) {
+      setError('CPF inválido');
       return;
     }
-
-    if (formData.password.length < 6) {
-      setError('A senha deve ter no mínimo 6 caracteres');
+    if (!formData.email || !formData.email.includes('@')) {
+      setError('E-mail inválido');
       return;
     }
 
     setLoading(true);
-
     try {
-      const { confirmPassword, ...userData } = formData;
-      // O método register agora salva no Supabase (HTTP POST) e já loga o usuário
+      // Usa o CPF (apenas números) como senha padrão
+      const userData = {
+        ...formData,
+        password: formData.cpf.replace(/\D/g, ''),
+      };
       await register(userData);
-      
-      // Navega para o Dashboard. O Dashboard agora tem o "guarda" de loading
-      // que impedirá erros de 'user is undefined' logo após o cadastro.
       navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Erro ao criar conta. Verifique os dados e tente novamente.');
@@ -164,41 +160,7 @@ export default function Register() {
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-4">
-              {/* Senha */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Senha</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="input-field pl-11"
-                    placeholder="••••••••"
-                    required
-                  />
-                </div>
-              </div>
-
-              {/* Confirmar Senha */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirmar Senha</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="password"
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="input-field pl-11"
-                    placeholder="••••••••"
-                    required
-                  />
-                </div>
-              </div>
-            </div>
+            {/* Não pede senha, será o CPF */}
 
             <button
               type="submit"

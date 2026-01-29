@@ -24,7 +24,10 @@ export const AuthProvider = ({ children }) => {
         const response = await supabaseAdapter.getCurrentUser();
         
         if (response?.user) {
-          setUser(response.user);
+          // Garante que role seja 'admin' se tipo_usuario for 'sindico'
+          let role = response.user.role;
+          if (role === 'sindico') role = 'admin';
+          setUser({ ...response.user, role });
         } else {
           // Fallback: Se o adapter falhar, pergunta direto ao Supabase Auth
           const { data: { session } } = await supabase.auth.getSession();
@@ -35,8 +38,9 @@ export const AuthProvider = ({ children }) => {
               .select('*')
               .eq('id', session.user.id)
               .single();
-            
-            setUser({ ...session.user, role: profile?.tipo_usuario });
+            let role = profile?.tipo_usuario;
+            if (role === 'sindico') role = 'admin';
+            setUser({ ...session.user, role: role || 'morador' });
           }
         }
       } catch (err) {
@@ -54,13 +58,16 @@ export const AuthProvider = ({ children }) => {
     const { user, error } = await supabaseAdapter.login(email, password);
     if (error) throw new Error(error.message);
 
+    // Força role para 'admin' se tipo_usuario for 'sindico'
+    let role = user?.role;
+    if (role === 'sindico') role = 'admin';
+
     // Lógica de senha padrão
     const senhasPadrao = ['Onix2026', 'admin123', '123456'];
     const precisaTrocarSenha = senhasPadrao.includes(password);
-    
     setForcePasswordChange(precisaTrocarSenha);
-    
-    const userWithRole = { ...user, precisaTrocarSenha };
+
+    const userWithRole = { ...user, role, precisaTrocarSenha };
     setUser(userWithRole);
     return userWithRole;
   };
@@ -79,12 +86,43 @@ export const AuthProvider = ({ children }) => {
     setUser(prev => ({ ...prev, ...updatedData }));
   };
 
+
+  // Função de registro robusta
+  // Novo fluxo: senha padrão = CPF (apenas números), não pede senha no formulário
+  const register = async ({ name, email, phone, cpf, unit, tipo_usuario = 'morador' }) => {
+    const cpfLimpo = cpf.replace(/\D/g, '');
+    // 1. Cria usuário no Supabase Auth com senha = CPF
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password: cpfLimpo
+    });
+    if (error) throw new Error(error.message);
+    const userId = data.user?.id;
+    if (!userId) throw new Error('Erro ao obter ID do usuário');
+
+    // 2. Cria perfil na tabela perfis
+    const { error: profileError } = await supabase.from('perfis').insert({
+      id: userId,
+      nome_completo: name,
+      email,
+      telefone: phone,
+      cpf: cpfLimpo,
+      unidade: unit,
+      tipo_usuario
+    });
+    if (profileError) throw new Error(profileError.message);
+
+    // 3. Login automático após registro
+    await login(email, cpfLimpo);
+  };
+
   const value = {
     user,
     loading,
     login,
     logout,
     updateUser,
+    register,
     // AJUSTADO: Agora reconhece 'sindico' como administrador
     isAdmin: user?.role === 'sindico' || user?.role === 'admin',
     forcePasswordChange,
