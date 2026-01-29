@@ -6,7 +6,7 @@ import {
   Wrench, Truck, ShieldCheck, ClipboardList, ArrowDownCircle,
   Bell, Menu, X, ChevronLeft, BarChart3,
   FilePieChart, FolderOpen, Droplets, HardHat,
-  PlugZap2
+  PlugZap2, Activity
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -18,23 +18,23 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Estados dos menus expandidos para incluir o novo grupo de medições técnicas
   const [menusOpen, setMenusOpen] = useState({
     financeiro: false,
+    medicoes: false,
     operacional: false,
     comunicacao: false,
     condominos: false
   });
 
   useEffect(() => {
+    const path = location.pathname;
     setMenusOpen({
-      financeiro: location.pathname.startsWith('/financeiro'),
-      operacional: location.pathname.startsWith('/operacional'),
-      comunicacao:
-        location.pathname.startsWith('/avisos') ||
-        location.pathname.startsWith('/comunicacao'),
-      condominos: 
-        location.pathname.startsWith('/condominos') || 
-        location.pathname.startsWith('/perfil')
+      financeiro: path.startsWith('/financeiro'),
+      medicoes: path.includes('consumo'),
+      operacional: path.startsWith('/operacional') && !path.includes('consumo'),
+      comunicacao: path.startsWith('/avisos') || path.startsWith('/comunicacao'),
+      condominos: path.startsWith('/condominos') || path.startsWith('/perfil')
     });
     setSidebarOpen(false);
   }, [location.pathname]);
@@ -90,7 +90,7 @@ export default function Layout() {
             </div>
             {!isCollapsed && (
               <div className="truncate">
-                <h1 className="text-lg font-black tracking-tight">ONIX</h1>
+                <h1 className="text-lg font-black tracking-tight text-gray-800">ONIX</h1>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Condomínio Tech</p>
               </div>
             )}
@@ -99,42 +99,46 @@ export default function Layout() {
           <nav className="flex-1 px-4 py-5 space-y-2 overflow-y-auto">
             <MenuLink to="/dashboard" icon={LayoutDashboard} name="Dashboard" isCollapsed={isCollapsed} />
 
+            {/* FINANCEIRO - Focado em Fluxo de Caixa e Transparência */}
             <Submenu name="Financeiro" icon={DollarSign} isOpen={menusOpen.financeiro} isCollapsed={isCollapsed} active={location.pathname.startsWith('/financeiro')} onClick={() => toggleSubmenu('financeiro')}>
               <SubmenuLink to="/financeiro/meus-boletos" name="Meus Boletos" icon={FileText} />
               {isAdmin && (
                 <>
-                  <SubmenuLink to="/financeiro/boletos" name="Painel Financeiro" icon={BarChart3} />
+                  <SubmenuLink to="/financeiro/boletos" name="Painel de Receitas" icon={BarChart3} />
                   <SubmenuLink to="/financeiro/gerar-boletos" name="Gerar Boletos" icon={DollarSign} />
-                  <SubmenuLink to="/financeiro/boletos-a-pagar" name="Cadatrar Pagamentos" icon={ArrowDownCircle} />
+                  <SubmenuLink to="/financeiro/boletos-a-pagar" name="Contas a Pagar" icon={ArrowDownCircle} />
+                  <SubmenuLink to="/operacional/demais-gastos" name="Despesas Extras" icon={Activity} />
                   <SubmenuLink to="/financeiro/prestacao-contas" name="Prestação de Contas" icon={FilePieChart} />
                   <SubmenuLink to="/financeiro/balancete-mensal" name="Balancete Mensal" icon={ClipboardList} />
                 </>
               )}
             </Submenu>
 
-            <Submenu name="Operacional" icon={Wrench} isOpen={menusOpen.operacional} isCollapsed={isCollapsed} active={location.pathname.startsWith('/operacional')} onClick={() => toggleSubmenu('operacional')}>
-              <SubmenuLink to="/operacional/manutencao" name="Manutenção" icon={HardHat} />
+            {/* MEDIÇÕES - Grupo novo para leituras técnicas recorrentes */}
+            <Submenu name="Medições" icon={Activity} isOpen={menusOpen.medicoes} isCollapsed={isCollapsed} active={location.pathname.includes('consumo')} onClick={() => toggleSubmenu('medicoes')}>
               <SubmenuLink to="/operacional/consumo-agua" name="Consumo Água" icon={Droplets} />
               <SubmenuLink to="/operacional/consumo-energia" name="Consumo Energia" icon={PlugZap2} />
-              <SubmenuLink to="/operacional/demais-gastos" name="Demais Gastos" icon={DollarSign} />
-              <SubmenuLink to="/operacional/seguranca" name="Câmeras / DVR" icon={ShieldCheck} />
-              <SubmenuLink to="/operacional/servicos" name="Serviços" icon={Truck} />
-              <SubmenuLink to="/operacional/ocorrencias" name="Ocorrências" icon={ClipboardList} />
+            </Submenu>
+
+            {/* MANUTENÇÃO - Focado na infraestrutura e serviços físicos */}
+            <Submenu name="Manutenção" icon={Wrench} isOpen={menusOpen.operacional} isCollapsed={isCollapsed} active={location.pathname.startsWith('/operacional') && !location.pathname.includes('consumo')} onClick={() => toggleSubmenu('operacional')}>
+              <SubmenuLink to="/operacional/manutencao" name="Ordens de Serviço" icon={HardHat} />
+              <SubmenuLink to="/operacional/seguranca" name="Monitoramento / DVR" icon={ShieldCheck} />
+              <SubmenuLink to="/operacional/servicos" name="Prestadores" icon={Truck} />
+              <SubmenuLink to="/operacional/ocorrencias" name="Livro de Ocorrências" icon={ClipboardList} />
             </Submenu>
 
             <MenuLink to="/reservas" icon={Calendar} name="Reservas Salão" isCollapsed={isCollapsed} />
 
             <Submenu name="Comunicação" icon={MessageSquare} isOpen={menusOpen.comunicacao} isCollapsed={isCollapsed} active={location.pathname.startsWith('/avisos') || location.pathname.startsWith('/comunicacao')} onClick={() => toggleSubmenu('comunicacao')}>
-              <SubmenuLink to="/avisos" name="Avisos" icon={Bell} />
-              <SubmenuLink to="/comunicacao/documentos" name="Documentos" icon={FolderOpen} />
+              <SubmenuLink to="/avisos" name="Mural de Avisos" icon={Bell} />
+              <SubmenuLink to="/comunicacao/documentos" name="Documentos e Atas" icon={FolderOpen} />
             </Submenu>
 
-            {/* SUBMENU CONDÔMINOS - CORRIGIDO PARA AS ROTAS DO MAIN.JSX */}
             <Submenu name="Perfil e Cadastro" icon={Users} isOpen={menusOpen.condominos} isCollapsed={isCollapsed} active={location.pathname.startsWith('/condominos') || location.pathname.startsWith('/perfil')} onClick={() => toggleSubmenu('condominos')}>
               <SubmenuLink to="/perfil" name="Meu Perfil" icon={User} />
-              
-              {isAdmin && <SubmenuLink to="/condominos/cadastro" name="Cadastrar Novo" icon={Users} />}
-              {isAdmin && <SubmenuLink to="/condominos/admin" name="Administração" icon={ShieldCheck} />}
+              {isAdmin && <SubmenuLink to="/condominos/cadastro" name="Cadastrar Morador" icon={Users} />}
+              {isAdmin && <SubmenuLink to="/condominos/admin" name="Configurações Admin" icon={ShieldCheck} />}
             </Submenu>
           </nav>
 
@@ -147,7 +151,6 @@ export default function Layout() {
         </div>
       </aside>
 
-      {/* CONTEÚDO PRINCIPAL */}
       <main className={`flex-1 min-w-0 transition-all duration-300 pt-16 lg:pt-0 ${isCollapsed ? 'lg:pl-24' : 'lg:pl-72'}`}>
         <div className="p-4 lg:p-8 w-full max-w-[1600px] mx-auto animate-in fade-in duration-500">
           <Outlet />

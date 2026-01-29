@@ -91,7 +91,7 @@ function AppRoutes() {
         <Route path="/financeiro/fornecedores" element={<ProtectedRoute requireAdmin><Fornecedores /></ProtectedRoute>} />
         <Route path="/financeiro/prestacao-contas" element={<ProtectedRoute requireAdmin><PrestacaoContas /></ProtectedRoute>} />
         <Route path="/financeiro/boletos" element={<ProtectedRoute requireAdmin><Financeiro /></ProtectedRoute>} />
-        <Route path="/financeiro/balancete-mensal" element={<ProtectedRoute requireAdmin><Balancetes /></ProtectedRoute>} />
+        <Route path="/financeiro/balancetes" element={<ProtectedRoute requireAdmin><Balancetes /></ProtectedRoute>} />
         <Route path="/banco/pix" element={<ProtectedRoute requireAdmin><Pix /></ProtectedRoute>} />
         <Route path="/condominos/cadastro" element={<ProtectedRoute requireAdmin><CadastroCondomino /></ProtectedRoute>} />
         <Route path="/condominos/admin" element={<ProtectedRoute requireAdmin><Admin /></ProtectedRoute>} />
