@@ -32,7 +32,9 @@ export default function Layout() {
       comunicacao:
         location.pathname.startsWith('/avisos') ||
         location.pathname.startsWith('/comunicacao'),
-      condominos: location.pathname.startsWith('/condominos')
+      condominos: 
+        location.pathname.startsWith('/condominos') || 
+        location.pathname.startsWith('/perfil')
     });
     setSidebarOpen(false);
   }, [location.pathname]);
@@ -77,17 +79,17 @@ export default function Layout() {
 
       {/* SIDEBAR */}
       <aside className={`fixed top-0 left-0 h-full z-50 bg-white border-r transition-all duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} ${isCollapsed ? 'lg:w-24' : 'lg:w-72'} w-72`}>
-        <button onClick={() => setIsCollapsed(!isCollapsed)} className="hidden lg:flex absolute -right-3 top-10 bg-white border rounded-full p-1 shadow">
+        <button onClick={() => setIsCollapsed(!isCollapsed)} className="hidden lg:flex absolute -right-3 top-10 bg-white border rounded-full p-1 shadow z-[60]">
           {isCollapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
 
         <div className="flex flex-col h-full">
           <div className={`flex items-center gap-3 px-6 py-6 border-b ${isCollapsed && 'lg:justify-center lg:px-0'}`}>
-            <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary-600 rounded-xl flex items-center justify-center flex-shrink-0">
               <Building2 className="w-6 h-6 text-white" />
             </div>
             {!isCollapsed && (
-              <div>
+              <div className="truncate">
                 <h1 className="text-lg font-black tracking-tight">ONIX</h1>
                 <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Condomínio Tech</p>
               </div>
@@ -95,9 +97,7 @@ export default function Layout() {
           </div>
 
           <nav className="flex-1 px-4 py-5 space-y-2 overflow-y-auto">
-
             <MenuLink to="/dashboard" icon={LayoutDashboard} name="Dashboard" isCollapsed={isCollapsed} />
-            <MenuLink to="/register" icon={User} name="Registrar Usuário" isCollapsed={isCollapsed} />
 
             <Submenu name="Financeiro" icon={DollarSign} isOpen={menusOpen.financeiro} isCollapsed={isCollapsed} active={location.pathname.startsWith('/financeiro')} onClick={() => toggleSubmenu('financeiro')}>
               <SubmenuLink to="/financeiro/meus-boletos" name="Meus Boletos" icon={FileText} />
@@ -129,25 +129,27 @@ export default function Layout() {
               <SubmenuLink to="/comunicacao/documentos" name="Documentos" icon={FolderOpen} />
             </Submenu>
 
-            {isAdmin && (
-              <Submenu name="Condôminos" icon={Users} isOpen={menusOpen.condominos} isCollapsed={isCollapsed} active={location.pathname.startsWith('/condominos')} onClick={() => toggleSubmenu('condominos')}>
-                <SubmenuLink to="/condominos/cadastro" name="Cadastrar" icon={User} />
-                <SubmenuLink to="/condominos/admin" name="Administração" icon={ShieldCheck} />
-              </Submenu>
-            )}
+            {/* SUBMENU CONDÔMINOS - CORRIGIDO PARA AS ROTAS DO MAIN.JSX */}
+            <Submenu name="Perfil e Cadastro" icon={Users} isOpen={menusOpen.condominos} isCollapsed={isCollapsed} active={location.pathname.startsWith('/condominos') || location.pathname.startsWith('/perfil')} onClick={() => toggleSubmenu('condominos')}>
+              <SubmenuLink to="/perfil" name="Meu Perfil" icon={User} />
+              
+              {isAdmin && <SubmenuLink to="/condominos/cadastro" name="Cadastrar Novo" icon={Users} />}
+              {isAdmin && <SubmenuLink to="/condominos/admin" name="Administração" icon={ShieldCheck} />}
+            </Submenu>
           </nav>
 
           <div className="p-4 border-t">
-            <button onClick={handleLogout} className={`flex items-center gap-3 w-full px-4 py-3 text-sm font-bold text-gray-500 hover:text-red-600 rounded-xl ${isCollapsed && 'lg:justify-center'}`}>
-              <LogOut className="w-5 h-5" />
-              {!isCollapsed && 'Sair'}
+            <button onClick={handleLogout} className={`flex items-center gap-3 w-full px-4 py-3 text-sm font-bold text-gray-500 hover:text-red-600 rounded-xl transition-colors ${isCollapsed && 'lg:justify-center'}`}>
+              <LogOut className="w-5 h-5 flex-shrink-0" />
+              {!isCollapsed && <span>Sair do Sistema</span>}
             </button>
           </div>
         </div>
       </aside>
 
+      {/* CONTEÚDO PRINCIPAL */}
       <main className={`flex-1 min-w-0 transition-all duration-300 pt-16 lg:pt-0 ${isCollapsed ? 'lg:pl-24' : 'lg:pl-72'}`}>
-        <div className="p-4 lg:p-6 w-full max-w-[1600px]">
+        <div className="p-4 lg:p-8 w-full max-w-[1600px] mx-auto animate-in fade-in duration-500">
           <Outlet />
         </div>
       </main>
@@ -155,31 +157,37 @@ export default function Layout() {
   );
 }
 
-/* COMPONENTES AUXILIARES INCLUÍDOS ABAIXO */
+/* COMPONENTES AUXILIARES */
 
 function MenuLink({ to, icon: Icon, name, isCollapsed }) {
   return (
-    <NavLink to={to} className={({ isActive }) => `flex items-center rounded-xl transition-all ${isCollapsed ? 'lg:justify-center h-12 w-12 mx-auto' : 'px-4 py-3 gap-3'} ${isActive ? 'bg-primary-600 text-white shadow' : 'text-gray-700 hover:bg-gray-100'}`}>
-      <Icon className="w-5 h-5" />
-      {!isCollapsed && <span className="font-semibold text-sm">{name}</span>}
+    <NavLink 
+      to={to} 
+      className={({ isActive }) => `flex items-center rounded-xl transition-all ${isCollapsed ? 'lg:justify-center h-12 w-12 mx-auto' : 'px-4 py-3 gap-3'} ${isActive ? 'bg-primary-600 text-white shadow-lg shadow-primary-200' : 'text-gray-600 hover:bg-gray-100'}`}
+    >
+      <Icon className="w-5 h-5 flex-shrink-0" />
+      {!isCollapsed && <span className="font-bold text-sm truncate">{name}</span>}
     </NavLink>
   );
 }
 
 function Submenu({ name, icon: Icon, children, isOpen, isCollapsed, onClick, active }) {
   return (
-    <div>
-      <button onClick={onClick} className={`flex items-center rounded-xl w-full transition-all ${isCollapsed ? 'lg:justify-center h-12 w-12 mx-auto' : 'px-4 py-3 gap-3'} ${active ? 'text-primary-600 bg-primary-50' : 'text-gray-700 hover:bg-gray-100'}`}>
-        <Icon className="w-5 h-5" />
+    <div className="space-y-1">
+      <button 
+        onClick={onClick} 
+        className={`flex items-center rounded-xl w-full transition-all ${isCollapsed ? 'lg:justify-center h-12 w-12 mx-auto' : 'px-4 py-3 gap-3'} ${active ? 'text-primary-700 bg-primary-50/50' : 'text-gray-600 hover:bg-gray-100'}`}
+      >
+        <Icon className="w-5 h-5 flex-shrink-0" />
         {!isCollapsed && (
           <>
-            <span className="flex-1 text-left font-semibold text-sm">{name}</span>
-            {isOpen ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+            <span className="flex-1 text-left font-bold text-sm truncate">{name}</span>
+            {isOpen ? <ChevronDown size={14} strokeWidth={3} /> : <ChevronRight size={14} strokeWidth={3} />}
           </>
         )}
       </button>
       {isOpen && !isCollapsed && (
-        <div className="ml-9 mt-1 space-y-1 border-l border-gray-100 pl-3">
+        <div className="ml-6 pl-4 border-l-2 border-gray-100 space-y-1 animate-in slide-in-from-left-2 duration-200">
           {children}
         </div>
       )}
@@ -189,9 +197,12 @@ function Submenu({ name, icon: Icon, children, isOpen, isCollapsed, onClick, act
 
 function SubmenuLink({ to, name, icon: Icon }) {
   return (
-    <NavLink to={to} className={({ isActive }) => `flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all ${isActive ? 'bg-primary-100 text-primary-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}>
-      <Icon className="w-4 h-4" />
-      {name}
+    <NavLink 
+      to={to} 
+      className={({ isActive }) => `flex items-center gap-2 px-3 py-2.5 text-xs rounded-lg transition-all ${isActive ? 'bg-primary-100 text-primary-700 font-black' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'}`}
+    >
+      <Icon className="w-4 h-4 flex-shrink-0" />
+      <span className="truncate">{name}</span>
     </NavLink>
   );
 }
