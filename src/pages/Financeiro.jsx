@@ -63,7 +63,7 @@ export default function Financeiro() {
     if (isUpdating || !isAdmin) return; // Só admin sincroniza
     setIsUpdating(true);
     try {
-      const response = await fetch('https://n8n.netminas.com/webhook/atualiza_boleto_status', {
+      const response = await fetch('https://geral-n8n.yzqq8i.easypanel.host/webhook/atualiza_boleto_status', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -87,7 +87,7 @@ export default function Financeiro() {
     setJustificativa('');
     setIsFetching(true);
     try {
-      const response = await fetch('https://n8n.netminas.com/webhook/cancela_boleto', {
+      const response = await fetch('https://geral-n8n.yzqq8i.easypanel.host/webhook/cancela_boleto', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ codigo_solicitacao: item.codigo_solicitacao, justificativa: motivo })
@@ -108,7 +108,7 @@ export default function Financeiro() {
     setConfirmPDF(null);
     setIsFetching(true);
     try {
-      const response = await fetch('https://n8n.netminas.com/webhook/recupera_boleto', {
+      const response = await fetch('https://geral-n8n.yzqq8i.easypanel.host/webhook/recupera_boleto', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ codigo_solicitacao: item.codigo_solicitacao })

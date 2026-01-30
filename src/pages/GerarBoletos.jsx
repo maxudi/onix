@@ -78,7 +78,7 @@ export default function GerarBoleto() {
         },
         ids_condominos: selecionados.map(s => s.id)
       };
-      const response = await fetch('https://n8n.netminas.com/webhook/gera_boleto', {
+      const response = await fetch('https://geral-n8n.yzqq8i.easypanel.host/webhook/gera_boleto', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
