@@ -11,6 +11,8 @@ import './index.css';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
+import Reset from './pages/Reset';
+import UpdatePassword from './pages/UpdatePassword';
 
 // Importação das duas versões do Perfil
 import PerfilEditar from './pages/Perfil'; 
@@ -63,6 +65,8 @@ function AppRoutes() {
       {/* ROTAS PÚBLICAS */}
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/reset" element={<Reset />} />
+      <Route path="/update-password" element={<UpdatePassword />} />
 
       {/* ROTAS PROTEGIDAS COM LAYOUT */}
       <Route element={<ProtectedRoute><Layout /></ProtectedRoute>}>
